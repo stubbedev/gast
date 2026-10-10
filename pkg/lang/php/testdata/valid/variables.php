@@ -1,0 +1,21 @@
+<?php
+$x = 'x';
+$$x = 'y';
+$$$x = 'z';
+$this2 = $this?->prop?->method()?->chain;
+$obj->prop = $$x;
+$obj->{'dynamic'} = 1;
+$obj->$x = 2;
+ClassWithStatic::$prop = 3;
+$value = ClassWithStatic::CONSTANT;
+$value = ClassWithStatic::$props['key'];
+ClassWithStatic::method(1, 2);
+list($first, , $third) = [1, 2, 3];
+[$a, [$b, $c]] = [1, [2, 3]];
+$ref = &$other;
+$array = [1, 'key' => 'value', ...$spread, &$byRef];
+$legacy = array(1, 2, 'k' => 'v');
+$empty = [];
+isset($a, $b[0]);
+empty($a);
+$v = ${'complex'};

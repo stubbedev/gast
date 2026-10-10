@@ -1,0 +1,3 @@
+<?php
+foreach ($list $item) {
+}
