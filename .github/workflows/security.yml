@@ -79,7 +79,10 @@ jobs:
 
   dependency-review:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    # Skipped while the module has no dependencies: with no lockfile
+    # the repository has no dependency-graph snapshot, and the review
+    # API rejects the repository outright.
+    if: github.event_name == 'pull_request' && hashFiles('go.sum') != ''
     permissions:
       contents: read
     steps:
