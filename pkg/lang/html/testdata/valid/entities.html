@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html>
 <body>
-<p>Entities stay raw: &amp; &lt; &gt; &quot; &apos; &nbsp; &#65; &#x42; &copy;</p>
+<p>Entities decode in values: &amp; &lt; &gt; &quot; &apos; &nbsp; &#65; &#x42; &copy;</p>
 <p>Raw angle brackets are fine: if a < b and c > d then x <= y.</p>
-<p data-entities="&lt;b&gt;&amp;amp;&#63;">attribute entities stay raw too</p>
+<p data-entities="&lt;b&gt;&amp;amp;&#63;">attribute values decode too</p>
 <p class="a&amp;b">class with entity</p>
+<p>Legacy forms: &amp decodes, &#97 too, and &counter stays literal.</p>
 </body>
 </html>

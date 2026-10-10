@@ -505,8 +505,8 @@ func (p *parser) parsePrimary() (Expr, error) {
 		p.Advance()
 		return &FloatLit{Span: tok.Span, Text: tok.Text}, nil
 	case KindString:
-		p.Advance()
-		return stringLit(tok), nil
+		tok := p.Advance()
+		return p.stringLit(tok)
 	case KindTrue, KindFalse:
 		p.Advance()
 		return &BooleanLit{Span: tok.Span, Value: tok.Kind == KindTrue}, nil
@@ -638,6 +638,125 @@ func stringLit(tok gast.Token) *StringLit {
 		style = "heredoc"
 	}
 	return &StringLit{Span: tok.Span, Kind: style, Text: text, Value: decodeString(text)}
+}
+
+// stringLit builds the literal node and parses interpolation parts for
+// double-quoted, heredoc, and shell-exec bodies; single-quoted and
+// nowdoc bodies stay raw.
+func (p *parser) stringLit(tok gast.Token) (Expr, error) {
+	lit := stringLit(tok)
+	if !interpolates(lit) {
+		return lit, nil
+	}
+	body, base := stringBody(tok)
+	parts, err := parseStringParts(p.source, body, base)
+	if err != nil {
+		return nil, err
+	}
+	lit.Parts = parts
+	return lit, nil
+}
+
+// interpolates reports whether the literal kind expands variables:
+// double-quoted strings, shell exec strings, and heredocs, but not
+// single-quoted strings and nowdocs.
+func interpolates(lit *StringLit) bool {
+	switch lit.Kind {
+	case "double", "shell":
+		return true
+	case "heredoc":
+		header := lit.Text
+		if newline := strings.IndexByte(header, '\n'); newline >= 0 {
+			header = header[:newline]
+		}
+		return strings.IndexByte(header, '\'') < 0
+	default:
+		return false
+	}
+}
+
+// stringBody returns the raw body of an interpolated string token and
+// the absolute offset of its first byte in the source.
+func stringBody(tok gast.Token) (string, int) {
+	if tok.Text[0] != '<' {
+		return tok.Text[1 : len(tok.Text)-1], tok.Span.Start + 1
+	}
+	header := strings.IndexByte(tok.Text, '\n')
+	return heredocBody(tok.Text), tok.Span.Start + header + 1
+}
+
+// parseEncapsExpr parses the expression of {$...} interpolation, which
+// php restricts to a variable root ($name, $$name, ${...}) followed by
+// dereference chains: -> and ?-> access, [expr] indexing, calls, and
+// :: variable access. Bare literals, names, parenthesized and unary
+// expressions, and binary or ternary operators are rejected there.
+func (p *parser) parseEncapsExpr() (Expr, error) {
+	expr, err := p.parseEncapsRoot()
+	if err != nil {
+		return nil, err
+	}
+	return p.parseEncapsPostfix(expr)
+}
+
+func (p *parser) parseEncapsRoot() (Expr, error) {
+	if p.Check(KindVariable) || p.Check(Dollar) {
+		return p.parseVariableTarget()
+	}
+	return nil, p.Fail("expected variable in string interpolation, found " + gast.Describe(p.Current()))
+}
+
+// parseEncapsPostfix continues the dereference chain of an encaps
+// expression root, requiring all tokens to be consumed.
+func (p *parser) parseEncapsPostfix(expr Expr) (Expr, error) {
+	for {
+		switch p.Current().Kind {
+		case Arrow, NullsafeArrow:
+			nullsafe := p.Advance().Kind == NullsafeArrow
+			name, err := p.parseMemberName()
+			if err != nil {
+				return nil, err
+			}
+			expr, err = p.parseCallOrFetch(expr, name, nullsafe)
+			if err != nil {
+				return nil, err
+			}
+		case LBracket:
+			p.Advance()
+			var index Expr
+			var err error
+			if !p.Check(RBracket) {
+				if index, err = p.parseExpr(); err != nil {
+					return nil, err
+				}
+			}
+			if _, err := p.Expect(RBracket, RBracket); err != nil {
+				return nil, err
+			}
+			expr = &IndexExpr{Span: p.SpanFrom(expr.Pos()), Target: expr, Index: index}
+		case LParen:
+			args, err := p.parseArgs()
+			if err != nil {
+				return nil, err
+			}
+			expr = &CallExpr{Span: p.SpanFrom(expr.Pos()), Func: expr, Args: args}
+		case DoubleColon:
+			p.Advance()
+			prop, err := p.parseVariableTarget()
+			if err != nil {
+				return nil, err
+			}
+			variableProp, ok := prop.(*Variable)
+			if !ok {
+				return nil, p.FailAt(prop.Pos(), "expected variable after '::' in string interpolation")
+			}
+			expr = &StaticPropertyFetch{Span: p.SpanFrom(expr.Pos()), Class: expr, Prop: variableProp}
+		default:
+			if p.AtEnd() {
+				return expr, nil
+			}
+			return nil, p.Fail("unexpected " + gast.Describe(p.Current()) + " in string interpolation")
+		}
+	}
 }
 
 // variable converts a variable token into a Variable node; the name

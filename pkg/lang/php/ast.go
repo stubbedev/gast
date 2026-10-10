@@ -291,6 +291,20 @@ type UnsetStmt struct {
 	Vars []Expr
 }
 
+// HaltCompilerStmt is a __halt_compiler() statement. The remainder of
+// the file after the call is raw data, held uncopied in Data.
+type HaltCompilerStmt struct {
+	gast.Span
+	Data *RawDataStmt
+}
+
+// RawDataStmt is the untouched remainder of a file after
+// __halt_compiler();. Text is a zero-copy slice of the source.
+type RawDataStmt struct {
+	gast.Span
+	Text string
+}
+
 // ClassMember is a member of a class-like declaration.
 type ClassMember interface {
 	Node
@@ -394,12 +408,39 @@ type FloatLit struct {
 	Text string
 }
 
-// StringLit is a string, heredoc, or shell-exec literal.
+// StringLit is a string, heredoc, or shell-exec literal. For
+// interpolating kinds (double-quoted, heredoc, shell exec) with an
+// interpolated body, Parts holds the decoded structure; Value keeps the
+// raw text with escapes decoded for compatibility.
 type StringLit struct {
 	gast.Span
 	Kind  string
 	Text  string
 	Value string
+	Parts []StringPart
+}
+
+// StringPart is one part of an interpolated string: a literal chunk or
+// an embedded expression.
+type StringPart interface {
+	Node
+	stringPart()
+}
+
+// LiteralPart is a literal chunk of an interpolated string; Text is the
+// raw source slice and Value its escape-decoded form.
+type LiteralPart struct {
+	gast.Span
+	Text  string
+	Value string
+}
+
+// ExprPart is one embedded expression of an interpolated string; Raw is
+// the raw source slice and Expr the parsed expression.
+type ExprPart struct {
+	gast.Span
+	Raw  string
+	Expr Expr
 }
 
 // BooleanLit is true or false.
@@ -723,36 +764,37 @@ type Type struct {
 	Names     []Name
 }
 
-func (File) stmt()           {}
-func (InlineHTMLStmt) stmt() {}
-func (ExpressionStmt) stmt() {}
-func (EchoStmt) stmt()       {}
-func (BlockStmt) stmt()      {}
-func (NopStmt) stmt()        {}
-func (IfStmt) stmt()         {}
-func (WhileStmt) stmt()      {}
-func (DoWhileStmt) stmt()    {}
-func (ForStmt) stmt()        {}
-func (ForeachStmt) stmt()    {}
-func (SwitchStmt) stmt()     {}
-func (BreakStmt) stmt()      {}
-func (ContinueStmt) stmt()   {}
-func (ReturnStmt) stmt()     {}
-func (GotoStmt) stmt()       {}
-func (LabelStmt) stmt()      {}
-func (TryStmt) stmt()        {}
-func (DeclareStmt) stmt()    {}
-func (FunctionStmt) stmt()   {}
-func (ClassStmt) stmt()      {}
-func (InterfaceStmt) stmt()  {}
-func (TraitStmt) stmt()      {}
-func (EnumStmt) stmt()       {}
-func (NamespaceStmt) stmt()  {}
-func (UseStmt) stmt()        {}
-func (ConstStmt) stmt()      {}
-func (GlobalStmt) stmt()     {}
-func (StaticStmt) stmt()     {}
-func (UnsetStmt) stmt()      {}
+func (File) stmt()             {}
+func (InlineHTMLStmt) stmt()   {}
+func (ExpressionStmt) stmt()   {}
+func (EchoStmt) stmt()         {}
+func (BlockStmt) stmt()        {}
+func (NopStmt) stmt()          {}
+func (IfStmt) stmt()           {}
+func (WhileStmt) stmt()        {}
+func (DoWhileStmt) stmt()      {}
+func (ForStmt) stmt()          {}
+func (ForeachStmt) stmt()      {}
+func (SwitchStmt) stmt()       {}
+func (BreakStmt) stmt()        {}
+func (ContinueStmt) stmt()     {}
+func (ReturnStmt) stmt()       {}
+func (GotoStmt) stmt()         {}
+func (LabelStmt) stmt()        {}
+func (TryStmt) stmt()          {}
+func (DeclareStmt) stmt()      {}
+func (FunctionStmt) stmt()     {}
+func (ClassStmt) stmt()        {}
+func (InterfaceStmt) stmt()    {}
+func (TraitStmt) stmt()        {}
+func (EnumStmt) stmt()         {}
+func (NamespaceStmt) stmt()    {}
+func (UseStmt) stmt()          {}
+func (ConstStmt) stmt()        {}
+func (GlobalStmt) stmt()       {}
+func (StaticStmt) stmt()       {}
+func (UnsetStmt) stmt()        {}
+func (HaltCompilerStmt) stmt() {}
 
 func (Method) classMember()     {}
 func (Property) classMember()   {}
@@ -797,3 +839,6 @@ func (ArrowFnExpr) expr()           {}
 func (MatchExpr) expr()             {}
 func (YieldExpr) expr()             {}
 func (ThrowExpr) expr()             {}
+
+func (LiteralPart) stringPart() {}
+func (ExprPart) stringPart()    {}

@@ -25,5 +25,9 @@ async def main():
 
 
 value = awaitable
-value = await coro
-value = await coro.method(1)
+
+
+async def call_awaitables():
+    value = await coro
+    value = await coro.method(1)
+    return value

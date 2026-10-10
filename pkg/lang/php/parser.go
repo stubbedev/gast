@@ -10,6 +10,7 @@ import (
 type parser struct {
 	*gast.TokenCursor
 	source string
+	scope  int // nesting depth of statement lists; 0 is the file's top level
 }
 
 func newParser(tokens []gast.Token, source string) *parser {
@@ -31,9 +32,15 @@ func (p *parser) parseFile() (*File, error) {
 
 // parseStmtList parses statements until EOF or one of terminators is
 // current (the terminator is left for the caller). Tag switches
-// (?> html <?php) become inline HTML statements inside the list.
+// (?> html <?php) become inline HTML statements inside the list. A list
+// with terminators is a nested scope: __halt_compiler() is only legal
+// at the file's top level.
 func (p *parser) parseStmtList(terminators ...string) ([]Stmt, error) {
 	var stmts []Stmt
+	if len(terminators) > 0 {
+		p.scope++
+		defer func() { p.scope-- }()
+	}
 	for !p.AtEnd() {
 		if p.Match(KindOpenTag) {
 			continue
@@ -164,6 +171,8 @@ func (p *parser) parseStatement() (Stmt, error) {
 		return p.parseGlobalStmt()
 	case KindUnset:
 		return p.parseUnsetStmt()
+	case KindHaltCompiler:
+		return p.parseHaltCompilerStmt()
 	case KindStatic:
 		switch p.Peek(1).Kind {
 		case KindVariable, "$":
@@ -318,8 +327,16 @@ func (p *parser) parseBodyOrAlt(endKind string) (Stmt, bool, error) {
 		}
 		return p.altBlock(colon.Span, stmts), true, nil
 	}
-	stmt, err := p.parseStatement()
+	stmt, err := p.parseScopedStatement()
 	return stmt, false, err
+}
+
+// parseScopedStatement parses a single-statement control-structure
+// body as a nested scope, like a braced block.
+func (p *parser) parseScopedStatement() (Stmt, error) {
+	p.scope++
+	defer func() { p.scope-- }()
+	return p.parseStatement()
 }
 
 func (p *parser) parseIfStmt() (Stmt, error) {
@@ -369,7 +386,7 @@ func (p *parser) parseIfStmt() (Stmt, error) {
 			return nil, err
 		}
 	} else {
-		if node.Then, err = p.parseStatement(); err != nil {
+		if node.Then, err = p.parseScopedStatement(); err != nil {
 			return nil, err
 		}
 		for p.Check(KindElseIf) {
@@ -378,7 +395,7 @@ func (p *parser) parseIfStmt() (Stmt, error) {
 			if err != nil {
 				return nil, err
 			}
-			then, err := p.parseStatement()
+			then, err := p.parseScopedStatement()
 			if err != nil {
 				return nil, err
 			}
@@ -389,7 +406,7 @@ func (p *parser) parseIfStmt() (Stmt, error) {
 			})
 		}
 		if p.Match(KindElse) {
-			if node.Else, err = p.parseStatement(); err != nil {
+			if node.Else, err = p.parseScopedStatement(); err != nil {
 				return nil, err
 			}
 		}
@@ -418,7 +435,7 @@ func (p *parser) parseWhileStmt() (Stmt, error) {
 
 func (p *parser) parseDoWhileStmt() (Stmt, error) {
 	doTok := p.Advance()
-	body, err := p.parseStatement()
+	body, err := p.parseScopedStatement()
 	if err != nil {
 		return nil, err
 	}
@@ -735,5 +752,36 @@ func (p *parser) parseDeclareStmt() (Stmt, error) {
 		return nil, p.Fail("expected '{', ':' or ';' after declare")
 	}
 	node.Span = p.SpanFrom(declareTok.Span)
+	return node, nil
+}
+
+// parseHaltCompilerStmt parses the reserved __halt_compiler statement.
+// When the lexer recognized the empty call and semicolon, it already
+// swallowed the file remainder into a raw data token; otherwise the bare
+// reserved word is parsed shape-first so errors point at the offending
+// token, and any use outside the file's top level is rejected as php
+// rejects it.
+func (p *parser) parseHaltCompilerStmt() (Stmt, error) {
+	tok := p.Current()
+	if p.scope > 0 {
+		return nil, p.FailAt(tok.Span, "__halt_compiler() can only be used from the outermost scope")
+	}
+	p.Advance()
+	if !strings.HasSuffix(tok.Text, Semicolon) {
+		if _, err := p.Expect(LParen, "'(' after '__halt_compiler'"); err != nil {
+			return nil, err
+		}
+		if _, err := p.Expect(RParen, "')' in __halt_compiler()"); err != nil {
+			return nil, err
+		}
+		if err := p.endStatement(); err != nil {
+			return nil, err
+		}
+	}
+	node := &HaltCompilerStmt{Span: tok.Span}
+	if p.Check(KindRawData) {
+		data := p.Advance()
+		node.Data = &RawDataStmt{Span: data.Span, Text: data.Text}
+	}
 	return node, nil
 }

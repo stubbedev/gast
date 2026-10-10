@@ -10,11 +10,16 @@ import (
 // the token slice mutable so '>'-run tokens (">>", ">>>=", ...) can be
 // split while closing nested type-argument lists, and supports
 // snapshot/restore for the speculative parses TypeScript's ambiguous
-// "<" requires.
+// "<" requires. The stream is either pre-tokenized (pull nil) or pulled
+// lazily by the TSX parser, whose lexer mode is parser-driven.
 type cursor struct {
-	tokens []gast.Token
-	pos    int
-	eof    gast.Token
+	tokens    []gast.Token
+	pos       int
+	eof       gast.Token
+	pull      func() (gast.Token, error) // lazy token source; nil when pre-tokenized
+	rewindTo  func(offset int)           // resets the lazy source after a failed speculation
+	exhausted bool                       // lazy source produced EOF or failed
+	err       error                      // lexical error from the lazy source
 }
 
 func newCursor(tokens []gast.Token) *cursor {
@@ -25,23 +30,60 @@ func newCursor(tokens []gast.Token) *cursor {
 	if len(tokens) > 0 {
 		end = tokens[len(tokens)-1].Span.End
 	}
-	return &cursor{tokens: tokens, eof: gast.Token{Kind: KindEOF, Span: gast.Span{Start: end, End: end}}}
+	return &cursor{
+		tokens: tokens, exhausted: true,
+		eof: gast.Token{Kind: KindEOF, Span: gast.Span{Start: end, End: end}},
+	}
 }
 
 // Current returns the token at the cursor.
 func (c *cursor) Current() gast.Token { return c.Peek(0) }
 
-// Peek returns the token ahead positions from the cursor, or the
-// end-of-input token past the end.
+// Peek returns the token ahead positions from the cursor, pulling
+// lazily as needed, or the end-of-input token past the end.
 func (c *cursor) Peek(ahead int) gast.Token {
-	if index := c.pos + ahead; index >= 0 && index < len(c.tokens) {
+	index := c.pos + ahead
+	for !c.exhausted && len(c.tokens) <= index {
+		c.pullNext()
+	}
+	if index >= 0 && index < len(c.tokens) {
 		return c.tokens[index]
 	}
 	return c.eof
 }
 
-// AtEnd reports whether every token has been consumed.
-func (c *cursor) AtEnd() bool { return c.pos >= len(c.tokens) }
+// pullNext appends one token from the lazy source, tracking the
+// synthesized end-of-input token and any lexical error.
+func (c *cursor) pullNext() {
+	token, err := c.pull()
+	if err != nil {
+		c.err = err
+		c.exhausted = true
+		return
+	}
+	if token.Kind == KindEOF {
+		c.eof = token
+		c.exhausted = true
+		return
+	}
+	c.tokens = append(c.tokens, token)
+	c.eof = gast.Token{Kind: KindEOF, Span: gast.Span{Start: token.Span.End, End: token.Span.End}}
+}
+
+// AtEnd reports whether every token has been consumed, pulling the
+// next token when the lazy source has not produced EOF yet.
+func (c *cursor) AtEnd() bool {
+	if c.pos < len(c.tokens) {
+		return false
+	}
+	if c.pull == nil {
+		return true
+	}
+	for !c.exhausted && len(c.tokens) <= c.pos {
+		c.pullNext()
+	}
+	return c.pos >= len(c.tokens)
+}
 
 // Check reports whether the current token has kind.
 func (c *cursor) Check(kind string) bool { return c.Current().Kind == kind }
@@ -104,8 +146,24 @@ func (c *cursor) SpanFrom(start gast.Span) gast.Span {
 // snapshot returns the current position for a speculative parse.
 func (c *cursor) snapshot() int { return c.pos }
 
-// restore rewinds to a snapshot after a failed speculative parse.
-func (c *cursor) restore(pos int) { c.pos = pos }
+// restore rewinds to a snapshot after a failed speculative parse,
+// re-lexing from the snapshot when tokens are pulled lazily (the
+// speculation may have pulled - and misread - tokens past it).
+func (c *cursor) restore(pos int) {
+	c.pos = pos
+	if c.rewindTo == nil {
+		return
+	}
+	c.tokens = c.tokens[:pos]
+	c.exhausted = false
+	c.err = nil
+	end := 0
+	if pos > 0 {
+		end = c.tokens[pos-1].Span.End
+	}
+	c.eof = gast.Token{Kind: KindEOF, Span: gast.Span{Start: end, End: end}}
+	c.rewindTo(end)
+}
 
 // matchGt consumes one '>' of a type-argument closer, splitting a
 // merged '>'-run token when the lexer produced ">>" or worse.
@@ -132,22 +190,58 @@ func (c *cursor) expectGt(description string) error {
 
 // parser walks the token stream. It tracks whether it sits inside an
 // async function or generator so await and yield are parsed as
-// operators exactly where they can appear.
+// operators exactly where they can appear. jsx selects TSX mode, in
+// which '<' starts a JSX element or fragment (and legacy angle-bracket
+// assertions are illegal) instead of an assertion or generic arrow.
 type parser struct {
 	*cursor
 	source      string
 	inAsync     bool
 	inGenerator bool
 	inFunction  bool
+	jsx         bool
+	tsx         *tsxLexer // lazy lexer whose mode the JSX parser drives; nil unless jsx
+	// typeParamsTrailingComma records whether the most recent
+	// parseTypeParams call saw a trailing comma; commas do not reach
+	// the AST, but TSX's arrow disambiguation needs one.
+	typeParamsTrailingComma bool
 }
 
-func newParser(tokens []gast.Token, source string) *parser {
-	return &parser{cursor: newCursor(tokens), source: source}
+func newParser(tokens []gast.Token, source string, jsx bool) *parser {
+	p := &parser{cursor: newCursor(tokens), source: source, jsx: jsx}
+	if jsx {
+		// TSX lexes lazily: JSX text cannot be tokenized without the
+		// parser deciding where an element starts.
+		p.tsx = newTSXLexer(source)
+		p.pull = p.tsx.next
+		p.rewindTo = func(offset int) { p.tsx.rewind(source, offset) }
+		p.exhausted = false
+	}
+	return p
+}
+
+// setLexMode switches the lazy TSX lexer; a no-op for pre-tokenized
+// parsers.
+func (p *parser) setLexMode(mode lexMode) {
+	if p.tsx != nil {
+		p.tsx.mode = mode
+	}
+}
+
+// lexMode returns the lazy lexer's current mode.
+func (p *parser) lexMode() lexMode {
+	if p.tsx != nil {
+		return p.tsx.mode
+	}
+	return lexJS
 }
 
 func (p *parser) parseFile() (*File, error) {
 	p.Match(KindHashbang)
 	stmts, err := p.parseStmtList()
+	if p.err != nil {
+		return nil, p.err
+	}
 	if err != nil {
 		return nil, err
 	}

@@ -193,6 +193,33 @@ func TestTokenizeHeredoc(t *testing.T) {
 	}
 }
 
+func TestTokenizeHaltCompiler(t *testing.T) {
+	t.Parallel()
+	got, err := kinds("<?php __halt_compiler() ;\njunk ?> $ $")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{KindOpenTag, KindHaltCompiler, KindRawData, KindEOF}
+	if len(got) != len(want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	for index, kind := range want {
+		if got[index] != kind {
+			t.Fatalf("token %d: got %q, want %q (%v)", index, got[index], kind, got)
+		}
+	}
+	tokens, err := Tokenize("<?php __halt_compiler() ;\njunk ?> $ $")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if halt := tokens[1]; halt.Text != "__halt_compiler() ;" || halt.Span != (gast.Span{Start: 6, End: 25}) {
+		t.Errorf("halt token: %q %v", halt.Text, halt.Span)
+	}
+	if data := tokens[2]; data.Text != "\njunk ?> $ $" {
+		t.Errorf("raw data: %q", data.Text)
+	}
+}
+
 func TestTokenizeCasts(t *testing.T) {
 	t.Parallel()
 	for source, cast := range map[string]string{

@@ -1,7 +1,11 @@
-// Package ts implements a TypeScript 5.x frontend for gast: a lexer, a
-// recursive-descent parser producing a spanned AST, and syntax
-// validation. It targets module syntax without TSX/JSX (angle-bracket
-// type assertions are therefore always available).
+// Package ts implements a TypeScript 5.x frontend for gast: a lexer,
+// a recursive-descent parser producing a spanned AST, and syntax
+// validation. Parsing comes in two modes: plain TypeScript
+// (Parse/Validate), where the ambiguous '<' is resolved by bounded
+// speculative parsing into a generic arrow, a legacy angle-bracket
+// assertion, or a comparison, and TSX (ParseTSX/ValidateTSX), where
+// JSX elements and fragments are expressions and angle-bracket
+// assertions are illegal, matching tsc.
 //
 // Lexing reuses the JavaScript frontend: TypeScript shares the
 // JavaScript lexical grammar, so pkg/lang/js tokenizes TypeScript

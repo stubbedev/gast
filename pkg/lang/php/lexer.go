@@ -7,10 +7,12 @@ import (
 )
 
 // lexer tokenizes PHP source. Outside of php tags the input is inline
-// HTML; <?php and <?= enter php mode and ?> leaves it.
+// HTML; <?php and <?= enter php mode and ?> leaves it. After a
+// __halt_compiler() call the remainder of the file is raw data.
 type lexer struct {
 	*gast.Cursor
-	inPHP bool
+	inPHP  bool
+	halted bool
 }
 
 func newLexer(source string) *lexer {
@@ -50,6 +52,9 @@ func (l *lexer) fail(message string) error {
 // inline HTML is one token per run, and lexical errors surface as
 // *gast.LexError.
 func (l *lexer) Next() (gast.Token, error) {
+	if l.halted {
+		return l.haltDataToken(), nil
+	}
 	if !l.inPHP {
 		return l.scanInlineHTML()
 	}
@@ -71,6 +76,23 @@ func (l *lexer) Next() (gast.Token, error) {
 		}
 		l.StartToken()
 		return l.scanToken(b)
+	}
+}
+
+// haltDataToken returns the raw data token covering the rest of the
+// file after __halt_compiler();. Its text is a zero-copy slice of the
+// source. Once exhausted, the lexer reports EOF.
+func (l *lexer) haltDataToken() gast.Token {
+	start := l.Offset()
+	end := len(l.Source())
+	l.SetOffset(end)
+	if start >= end {
+		return l.eofToken()
+	}
+	return gast.Token{
+		Kind: KindRawData,
+		Text: l.Source()[start:end],
+		Span: gast.Span{Start: start, End: end},
 	}
 }
 
@@ -182,10 +204,75 @@ func (l *lexer) scanToken(b byte) (gast.Token, error) {
 
 func (l *lexer) scanIdent() (gast.Token, error) {
 	l.SkipWhile(isIdentByte)
+	if strings.EqualFold(l.MarkedText(), wordHaltCompiler) {
+		// The word is reserved everywhere; when the empty call and
+		// semicolon follow, the token covers them and the rest of the
+		// file becomes raw data.
+		if end, ok := l.haltCallEnd(); ok {
+			l.SetOffset(end)
+			l.halted = true
+		}
+		return l.token(KindHaltCompiler), nil
+	}
 	if kind, ok := keywords[strings.ToLower(l.MarkedText())]; ok {
 		return l.token(kind), nil
 	}
 	return l.token(KindIdent), nil
+}
+
+// haltCallEnd reports whether the source after the __halt_compiler word
+// spells the empty call followed by a semicolon, allowing whitespace
+// and comments between the parts: __halt_compiler ( ) ;. It returns the
+// offset just past the semicolon.
+func (l *lexer) haltCallEnd() (int, bool) {
+	end := l.Offset()
+	for _, part := range []string{"(", ")", ";"} {
+		end = l.skipHaltSpace(end)
+		if !strings.HasPrefix(l.Source()[end:], part) {
+			return 0, false
+		}
+		end += len(part)
+	}
+	return end, true
+}
+
+// skipHaltSpace advances over whitespace and comments from offset.
+func (l *lexer) skipHaltSpace(offset int) int {
+	source := l.Source()
+	for offset < len(source) {
+		switch source[offset] {
+		case ' ', '\t', '\n', '\r':
+			offset++
+		case '/':
+			if strings.HasPrefix(source[offset:], "/*") {
+				if end := strings.Index(source[offset+2:], "*/"); end >= 0 {
+					offset += 2 + end + 2
+					continue
+				}
+				return len(source)
+			}
+			if strings.HasPrefix(source[offset:], "//") {
+				if next := strings.IndexByte(source[offset:], '\n'); next >= 0 {
+					offset += next
+					continue
+				}
+				return len(source)
+			}
+			return offset
+		case '#':
+			if strings.HasPrefix(source[offset+1:], "[") {
+				return offset
+			}
+			if next := strings.IndexByte(source[offset:], '\n'); next >= 0 {
+				offset += next
+				continue
+			}
+			return len(source)
+		default:
+			return offset
+		}
+	}
+	return offset
 }
 
 // scanVariable scans $name. A $ not followed by a name yields a bare
@@ -531,6 +618,37 @@ func (l *lexer) scanOperator() (gast.Token, error) {
 	}
 	l.Advance()
 	return gast.Token{}, l.fail("unexpected character")
+}
+
+// tokenizeInterpolation lexes source from offset in php mode, stopping
+// before the first unmatched '}', which is left unconsumed. It returns
+// the tokens (EOF excluded) and the offset of that '}', or -1 when the
+// input ends first. Used to parse the expression inside {$...}
+// interpolation, where braces, strings, and comments nest.
+func tokenizeInterpolation(source string, offset int) ([]gast.Token, int, error) {
+	l := newLexer(source)
+	l.inPHP = true
+	l.SetOffset(offset)
+	var tokens []gast.Token
+	depth := 0
+	for {
+		token, err := l.Next()
+		if err != nil {
+			return nil, 0, err
+		}
+		switch token.Kind {
+		case KindEOF:
+			return nil, -1, nil
+		case LBrace:
+			depth++
+		case RBrace:
+			if depth == 0 {
+				return tokens, token.Span.Start, nil
+			}
+			depth--
+		}
+		tokens = append(tokens, token)
+	}
 }
 
 func (l *lexer) matchOp(op string) bool {

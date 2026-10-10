@@ -12,6 +12,7 @@ type frame struct {
 	el        *Element
 	startSpan gast.Span // span of the start tag, for unclosed-element errors
 	lastEnd   int       // end offset of the last node inserted into the element
+	ns        string    // namespace: HTML, or foreign svg/math content
 }
 
 // parser is a tree builder over the token stream. Nodes are appended
@@ -73,7 +74,11 @@ func (p *parser) parseNode() error {
 			p.sawContent = true
 		}
 		p.Advance()
-		p.insert(&Text{Span: tok.Span, Text: tok.Text})
+		value, err := decodeEntities(tok.Text, tok.Span.Start, false)
+		if err != nil {
+			return err
+		}
+		p.insert(&Text{Span: tok.Span, Text: tok.Text, Value: value})
 	case KindTagOpen:
 		return p.startTag()
 	case KindEndTagOpen:
@@ -87,39 +92,74 @@ func (p *parser) parseNode() error {
 // startTag builds an element from a start tag. The element is appended
 // after implicitly closable siblings have been closed; void and
 // self-closed elements stay childless, and raw-text or rcdata elements
-// take their content immediately.
+// take their content immediately. Inside foreign content no implicit
+// closing or void rules apply, self-closing works for any element, and
+// known SVG tag names are case-adjusted.
 func (p *parser) startTag() error {
 	tok := p.Current()
 	p.sawContent = true
 	name := strings.TrimPrefix(tok.Text, lt)
 	lower := strings.ToLower(name)
+	parentNS := p.ns()
+	if parentNS == nsSVG {
+		if adjusted := svgTagAdjust[lower]; adjusted != "" {
+			name = adjusted
+		}
+	}
 	p.Advance()
-	attrs, closeSpan, selfClosed, err := p.attributes()
+	attrs, closeSpan, selfClosed, err := p.attributes(parentNS)
 	if err != nil {
 		return err
 	}
-	p.closeImplicit(lower)
+	if parentNS == nsHTML {
+		p.closeImplicit(lower)
+	}
 	el := &Element{Name: name, Attrs: attrs, Span: gast.Merge(tok.Span, closeSpan)}
 	p.insert(el)
 	switch {
-	case selfClosed, voidElements[lower]:
+	case selfClosed:
 		return nil
-	case rawTextElements[lower], rcdataElements[lower]:
+	case parentNS == nsHTML && voidElements[lower]:
+		return nil
+	case parentNS == nsHTML && (rawTextElements[lower] || rcdataElements[lower]):
 		return p.fillRaw(el)
-	default:
-		p.stack = append(p.stack, &frame{el: el, startSpan: tok.Span, lastEnd: closeSpan.End})
-		return nil
 	}
+	p.stack = append(p.stack, &frame{
+		el:        el,
+		startSpan: tok.Span,
+		lastEnd:   closeSpan.End,
+		ns:        childNamespace(parentNS, lower, attrs),
+	})
+	return nil
+}
+
+// ns returns the namespace of the nearest open element - the insertion
+// mode for the next node. An empty stack means HTML content.
+func (p *parser) ns() string {
+	if len(p.stack) > 0 {
+		return p.stack[len(p.stack)-1].ns
+	}
+	return nsHTML
 }
 
 // attributes consumes attribute tokens and the tag-closing token.
-// Duplicate attribute names are an error.
-func (p *parser) attributes() ([]Attribute, gast.Span, bool, error) {
+// Duplicate attribute names are an error. Inside foreign content
+// known attribute names are case-adjusted; values are always decoded.
+func (p *parser) attributes(ns string) ([]Attribute, gast.Span, bool, error) {
 	var attrs []Attribute
 	seen := make(map[string]bool)
 	for p.Check(KindAttr) {
 		tok := p.Advance()
-		name, value := splitAttribute(tok.Text)
+		name, value, valueOffset := splitAttribute(tok.Text)
+		if ns != nsHTML {
+			if adjusted := attributeAdjustment(ns, name); adjusted != "" {
+				name = adjusted
+			}
+		}
+		value, err := decodeEntities(value, tok.Span.Start+valueOffset, true)
+		if err != nil {
+			return nil, gast.Span{}, false, err
+		}
 		lower := strings.ToLower(name)
 		if seen[lower] {
 			return nil, gast.Span{}, false, p.FailAt(tok.Span, "duplicate attribute "+name)
@@ -144,7 +184,11 @@ func (p *parser) fillRaw(el *Element) error {
 		el.Children = append(el.Children, &RawText{Span: tok.Span, Kind: lower, Text: tok.Text})
 	case p.Check(KindRCDATA):
 		tok := p.Advance()
-		el.Children = append(el.Children, &Text{Span: tok.Span, Text: tok.Text})
+		value, err := decodeEntities(tok.Text, tok.Span.Start, false)
+		if err != nil {
+			return err
+		}
+		el.Children = append(el.Children, &Text{Span: tok.Span, Text: tok.Text, Value: value})
 	}
 	name, span, err := p.consumeEndTag()
 	if err != nil {
@@ -160,11 +204,20 @@ func (p *parser) fillRaw(el *Element) error {
 // endTag closes the nearest matching open element, implicitly closing
 // intervening closable elements. Any other end tag is an error, except
 // a stray </p>, which is tolerated (and ignored) per the spec's
-// recovery rule.
+// recovery rule. Inside foreign content there are no implicit closes:
+// the end tag must match the current element, case-insensitively.
 func (p *parser) endTag() error {
 	name, span, err := p.consumeEndTag()
 	if err != nil {
 		return err
+	}
+	if p.ns() != nsHTML {
+		top := p.stack[len(p.stack)-1]
+		if !strings.EqualFold(top.el.Name, name) {
+			return p.FailAt(span, "end tag </"+name+"> does not match open element <"+top.el.Name+">")
+		}
+		p.pop(span.End)
+		return nil
 	}
 	lower := strings.ToLower(name)
 	if voidElements[lower] {
@@ -316,22 +369,34 @@ func commentText(text string) string {
 	return text[2 : len(text)-1]
 }
 
-// splitAttribute splits an attribute token's raw text into name and
-// value. The value keeps its raw source text minus the surrounding
-// quotes; entities are not decoded. A valueless attribute has an empty
-// value.
-func splitAttribute(text string) (string, string) {
-	name, value, found := strings.Cut(text, "=")
+// splitAttribute splits an attribute token's raw text into name,
+// value, and the byte offset of the value within the raw text (used to
+// position decoding errors). The value keeps its raw source text minus
+// the surrounding quotes; entities are not decoded here. A valueless
+// attribute has an empty value.
+func splitAttribute(text string) (string, string, int) {
+	name, rest, found := strings.Cut(text, "=")
 	if !found {
-		return name, ""
+		return name, "", len(text)
 	}
-	name = strings.TrimRight(name, " \t\n\r\f")
-	value = strings.TrimLeft(value, " \t\n\r\f")
+	offset := len(name) + 1
+	value := strings.TrimLeft(rest, " \t\n\r\f")
+	offset += len(rest) - len(value)
 	if len(value) >= 2 {
 		first, last := value[0], value[len(value)-1]
 		if (first == '"' || first == '\'') && first == last {
 			value = value[1 : len(value)-1]
+			offset++
 		}
 	}
-	return name, value
+	return strings.TrimRight(name, " \t\n\r\f"), value, offset
+}
+
+// attributeAdjustment returns the case-adjusted spelling of a foreign
+// attribute name, or "" when the name has no adjustment.
+func attributeAdjustment(ns, name string) string {
+	if ns == nsMath {
+		return mathAttrAdjust[strings.ToLower(name)]
+	}
+	return svgAttrAdjust[strings.ToLower(name)]
 }

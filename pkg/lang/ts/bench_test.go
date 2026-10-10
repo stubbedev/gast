@@ -8,7 +8,17 @@ import (
 
 // BenchmarkParse runs the parser over the largest valid corpus file.
 func BenchmarkParse(b *testing.B) {
-	files, err := filepath.Glob("testdata/valid/*.ts")
+	benchmarkValidate(b, "testdata/valid/*.ts", Validate)
+}
+
+// BenchmarkParseTSX runs the TSX parser over the largest valid corpus
+// file.
+func BenchmarkParseTSX(b *testing.B) {
+	benchmarkValidate(b, "testdata/valid/*.tsx", ValidateTSX)
+}
+
+func benchmarkValidate(b *testing.B, pattern string, validate func(string) error) {
+	files, err := filepath.Glob(pattern)
 	if err != nil || len(files) == 0 {
 		b.Fatal("no corpus files")
 	}
@@ -26,7 +36,7 @@ func BenchmarkParse(b *testing.B) {
 	b.Logf("benchmarking %s (%d bytes)", largest, len(source))
 	b.ResetTimer()
 	for b.Loop() {
-		if err := Validate(string(source)); err != nil {
+		if err := validate(string(source)); err != nil {
 			b.Fatal(err)
 		}
 	}

@@ -45,7 +45,8 @@ func (p *parser) parseType() (TypeNode, error) {
 }
 
 // fnTypeAhead reports whether the "(" at the cursor opens a function
-// type: its matching ")" is followed by "=>".
+// type: its matching ")" is followed by "=>". Semicolons inside the
+// brackets (object-type members) do not end the scan.
 func (p *parser) fnTypeAhead() bool {
 	depth := 0
 	for i := 0; ; i++ {
@@ -63,7 +64,7 @@ func (p *parser) fnTypeAhead() bool {
 			if depth < 0 {
 				return false
 			}
-		case KindEOF, Semicolon:
+		case KindEOF:
 			return false
 		}
 	}
@@ -742,8 +743,10 @@ func (p *parser) parseMethodSig(start gast.Span, key Expr, optional, readonly bo
 // parseTypeParams parses a type-parameter list
 // `<const T in out extends X = D, ...>` when a '<' follows; every call
 // site is a position where '<' cannot be a comparison operator, so no
-// lookahead is needed.
+// lookahead is needed. typeParamsTrailingComma reports a trailing
+// comma, which TSX's arrow-versus-JSX disambiguation needs.
 func (p *parser) parseTypeParams() ([]*TypeParam, error) {
+	p.typeParamsTrailingComma = false
 	if !p.Check(Lt) {
 		return nil, nil
 	}
@@ -785,6 +788,7 @@ func (p *parser) parseTypeParams() ([]*TypeParam, error) {
 			break
 		}
 		if gtCloses(p.Current().Kind) > 0 {
+			p.typeParamsTrailingComma = true
 			break // trailing comma
 		}
 	}

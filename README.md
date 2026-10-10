@@ -64,6 +64,7 @@ The frontend is picked by file extension:
 | `.php` | php |
 | `.js`, `.mjs`, `.cjs` | javascript |
 | `.ts` | typescript |
+| `.tsx` | typescript (JSX mode) |
 | `.html` | html |
 | `.css` | css |
 | `.scss` | scss |
@@ -91,7 +92,7 @@ must fail it.
 | js | `node --check` (Node 24) |
 | ts | `tsc --noEmit` (TypeScript 5) |
 | css, scss, sass | `sass` compiler (dart-sass) |
-| python | `python3 ast.parse` (CPython 3.14) |
+| python | `python3 compile()` (CPython 3.14) |
 | html | hand-designed strict rules (no strict reference validator exists) |
 
 All lexers and parsers are single-pass with bounded lookahead, no
@@ -103,13 +104,12 @@ Targets PHP 8.x syntax:
 
 - Full tag handling: `<?php`, `<?=`, `?>`, inline HTML, tags inside comments
 - Numbers: decimal, hex, binary, octal, legacy octal, floats, exponents, PHP's exact underscore and malformed-octal rules (`08` and `1__2` are errors, `08.5` is a float, `1and 2` lexes as `1 and 2`)
-- Strings: single- and double-quoted with escape decoding, heredoc, nowdoc, shell exec
+- Strings: single- and double-quoted with escape decoding, heredoc, nowdoc, shell exec; interpolation parsed into literal and expression parts (`$var`, `$var->prop` (one level), `$var[idx]`, `${...}`, and `{$...}` complex syntax)
 - Operators and precedence matching php.net's table, including `.` below `+`/`<<`, right-associative `**` and `??`, keyword `and`/`or`/`xor` looser than assignment
 - Classes (abstract, final, readonly, anonymous, promotion), interfaces, traits with adaptation clauses, enums including backed-enum case checks, typed constants
 - Attributes, namespaces (braced and simple), use groups with `function`/`const` entries, unions/intersections/DNF types
 - Control flow in both brace and alternative syntax, match expressions, closures and arrow functions (incl. `static fn`), first-class callables, named arguments, generators, `throw` as an expression
-
-Not parsed: `__halt_compiler` (everything after it is compiler-terminated data), and interpolation is preserved as raw text rather than an AST structure.
+- `__halt_compiler()` at the outermost scope, with the file remainder kept as a zero-copy raw data node; any other use of the reserved word is a positioned error, matching php
 
 ## JavaScript coverage
 
@@ -125,14 +125,15 @@ Not parsed: `__halt_compiler` (everything after it is compiler-terminated data),
 - Full type grammar: unions/intersections, tuples with names and rest, mapped and conditional types with `infer`, template literal types, `keyof`/`typeof`/indexed access, generics with defaults and `const` type params, `import()` types
 - Interfaces, type aliases, enums (incl. `const enum`), namespaces, `declare`, abstract classes, parameter properties, access modifiers, decorators
 - `satisfies`, `as const`, non-null `!`, definite assignment `let x!: T`, overload signatures, `export =` / `import x = require()`
-- `x as T` is fully supported; legacy `<T>x` assertions use a bounded heuristic (no TSX)
+- `x as T` and legacy `<T>x` assertions (speculative parsing matching tsc's verdicts exactly); TSX mode parses the full JSX grammar - elements, fragments, spread attributes, expression containers, namespaced/member names - and rejects legacy angle assertions like tsc
 
 ## HTML coverage
 
 - WHATWG-subset tokenizer: doctypes, comments, bogus comments, CDATA, attribute quoting variants, raw-text elements (script/style) and RCDATA (title/textarea)
 - Tree building with implicit closing rules (p, li, td/tr, dd/dt, option), void elements, synthesized html/head/body wrappers
 - Strict failure on: unclosed elements at EOF, stray or mismatched end tags, unclosed attribute quotes, end tags with attributes, void elements with close tags, duplicate attributes, misplaced doctypes
-- Entities stay raw; no foreign-content (SVG/MathML) rules
+- Entities decoded per WHATWG rules (full 2231-entry html5 named table, numeric forms, replacement and windows-1252 remap rules) into text and attribute values; `&#;` with no digits is an error
+- Foreign content: SVG/MathML with case preservation and the spec's tag/attribute case-adjustment tables, self-closing honored anywhere, no HTML implicit closing, HTML integration points (`foreignObject`, `desc`, `title`, `annotation-xml`)
 
 ## CSS / SCSS / SASS coverage
 
@@ -146,7 +147,9 @@ Not parsed: `__halt_compiler` (everything after it is compiler-terminated data),
 - Python 3.12/3.13: INDENT/DEDENT lexing, PEP 701 f-strings with nested quotes and format specs, all literal prefixes, walrus, match statements with the full pattern grammar, PEP 695 generics, async, decorators, comprehensions, starred targets
 - Signature Python precedence: chained comparisons as one node, `-2**2 == -(2**2)`, right-associative power
 
-Not enforced (compile-time, not parse-time, in CPython): symbol-table rules like `return` outside a function, duplicate parameters.
+- Symbol-table checks mirrored from CPython's compile() with matching messages: `return`/`yield`/`await` placement, `break`/`continue` and `else`-clause scoping, duplicate parameters, `global`/`nonlocal` misuse, `from __future__` placement, starred-target and augmented-assignment target rules, `import *` placement, `__debug__` targets
+
+Left to runtime: match-pattern reachability and SyntaxWarning-only rules.
 
 ## Core (pkg/gast)
 

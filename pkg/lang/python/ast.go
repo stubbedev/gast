@@ -396,10 +396,13 @@ type DictExpr struct {
 	Items []*DictItem
 }
 
-// StarredExpr is a `*expr` unpack in a target, display, or call.
+// StarredExpr is a `*expr` unpack in a target, display, or call;
+// Parenthesized marks a lone star that was wrapped in parentheses,
+// which is illegal in a target.
 type StarredExpr struct {
 	gast.Span
-	Value Expr
+	Value         Expr
+	Parenthesized bool
 }
 
 // AttributeExpr is `value.attr`.

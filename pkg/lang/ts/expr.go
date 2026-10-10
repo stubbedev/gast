@@ -54,15 +54,24 @@ func (p *parser) parseExpr(noIn bool) (Expr, error) {
 	return node, nil
 }
 
-// parseAssignExpr parses arrows (plain, async, and generic), legacy
-// angle assertions, yield, await, conditional, and assignment
+// parseAssignExpr parses arrows (plain, async, and generic), yield,
+// await, conditional, assignment, and - in TSX mode - JSX element
 // expressions.
 func (p *parser) parseAssignExpr(noIn bool) (Expr, error) {
+	if p.Check(Lt) {
+		// The ambiguous '<': a generic arrow wins (speculatively),
+		// then TSX mode starts a JSX element; a legacy angle-bracket
+		// assertion falls through to parseUnary below.
+		if expr, ok := p.tryGenericArrow(nil); ok {
+			return expr, nil
+		}
+		if p.jsx {
+			return p.parseJSXElement()
+		}
+	}
 	switch {
 	case p.inGenerator && p.isWord("yield"):
 		return p.parseYield()
-	case p.Check(Lt) && p.genericArrowAhead(0):
-		return p.parseGenericArrow(nil)
 	case p.Check(LParen) && p.arrowAhead(0):
 		return p.parseParenArrow(false)
 	case p.isWord("async") && p.CheckAhead(1, KindFunction) && !p.lineBreakBetween(p.Current(), p.Peek(1)):
@@ -74,15 +83,14 @@ func (p *parser) parseAssignExpr(noIn bool) (Expr, error) {
 			async := p.Advance()
 			binding := &IdentExpr{Span: async.Span, Name: async.Text}
 			return p.parseArrowTail(async.Span, nil, []*Param{{Span: async.Span, Binding: binding}}, false)
-		case p.CheckAhead(1, Lt) && p.genericArrowAhead(1) &&
-			!p.lineBreakBetween(p.Current(), p.Peek(1)):
-			// `async <T>(params) => ...`
+		case p.CheckAhead(1, Lt) && !p.lineBreakBetween(p.Current(), p.Peek(1)):
+			// `async <T>(params) => ...`, speculative like the bare form
+			mark := p.snapshot()
 			async := p.Advance()
-			expr, err := p.parseGenericArrow(&async.Span)
-			if err != nil {
-				return nil, err
+			if expr, ok := p.tryGenericArrow(&async.Span); ok {
+				return expr, nil
 			}
-			return expr, nil
+			p.restore(mark)
 		case p.CheckAhead(1, KindIdent) && p.CheckAhead(2, Arrow) &&
 			!p.lineBreakBetween(p.Current(), p.Peek(1)) && !p.lineBreakBetween(p.Peek(1), p.Peek(2)):
 			// `async x => ...`
@@ -290,8 +298,8 @@ func isUnaryLike(expr Expr) bool {
 }
 
 // parseUnary parses prefix operators; await is one when an expression
-// cannot have just ended, and a '<' that cannot start any JavaScript
-// expression opens a legacy angle-bracket type assertion.
+// cannot have just ended, and a '<' hands the angle-bracket
+// disambiguation to parseLtExpression.
 func (p *parser) parseUnary() (Expr, error) {
 	tok := p.Current()
 	switch tok.Kind {
@@ -313,6 +321,9 @@ func (p *parser) parseUnary() (Expr, error) {
 		}
 		return &UpdateExpr{Span: p.SpanFrom(tok.Span), Op: tok.Kind, Expr: expr, Prefix: true}, nil
 	case Lt:
+		if p.jsx {
+			return p.parseJSXElement()
+		}
 		return p.parseAngleAssertion()
 	}
 	if p.isWord("await") && p.awaitOperator() {
@@ -326,25 +337,20 @@ func (p *parser) parseUnary() (Expr, error) {
 	return p.parsePostfix()
 }
 
-// parseAngleAssertion parses the legacy `<T>expr` assertion. A '<' can
-// never start a JavaScript expression, so the attempt is unconditional;
-// a failed parse falls back to comparison parsing with the original
-// error reported from the assertion branch, prioritizing `as` forms.
+// parseAngleAssertion parses the legacy `<T>expr` assertion; the '<'
+// is current. Callers speculate and rewind on failure, so no restore
+// happens here.
 func (p *parser) parseAngleAssertion() (Expr, error) {
-	mark := p.snapshot()
 	lt := p.Advance()
 	node := &AngleAssertionExpr{}
 	var err error
 	if node.Type, err = p.parseType(); err != nil {
-		p.restore(mark)
 		return nil, err
 	}
 	if err := p.expectGt("angle-bracket assertion"); err != nil {
-		p.restore(mark)
 		return nil, err
 	}
 	if node.Expr, err = p.parseUnary(); err != nil {
-		p.restore(mark)
 		return nil, err
 	}
 	node.Span = gast.Merge(lt.Span, node.Expr.Pos())
@@ -1038,7 +1044,9 @@ func (p *parser) returnTypeArrow(from int) bool {
 					return !p.lineBreakBetween(p.Peek(i-1), tok)
 				}
 			case Semicolon:
-				return false
+				if depth == 0 {
+					return false
+				}
 			}
 		}
 		if depth < 0 {
@@ -1098,47 +1106,10 @@ func (p *parser) typeArgsAhead(offset int) (typeArgsResult, bool) {
 	}
 }
 
-// genericArrowAhead scans from a '<' at offset for a generic arrow:
-// type parameters, a parameter list, an optional return type, and "=>".
-func (p *parser) genericArrowAhead(offset int) bool {
-	depth := 0
-	parenDepth := 0
-	for i := offset; ; i++ {
-		tok := p.Peek(i)
-		if opens := gtOpens(tok.Kind); opens > 0 {
-			depth += opens
-			continue
-		}
-		if closes := gtCloses(tok.Kind); closes > 0 {
-			depth -= closes
-			if depth <= 0 {
-				next := p.Peek(i + 1)
-				if next.Kind == LParen {
-					return p.arrowAhead(i + 1)
-				}
-				return false
-			}
-			continue
-		}
-		switch tok.Kind {
-		case LParen, LBracket, LBrace:
-			parenDepth++
-		case RParen, RBracket, RBrace:
-			parenDepth--
-			if parenDepth < 0 {
-				return false
-			}
-		case KindEOF, Semicolon:
-			return false
-		}
-	}
-}
-
-// parseGenericArrow speculatively parses `[async] <T>(x: T) => body`,
-// rewinding and failing so the caller can fall back to comparison
-// parsing. start is the span of the async keyword when set.
+// parseGenericArrow parses `[async] <T>(x: T) => body` starting at
+// the '<'; callers speculate and rewind on failure, so no restore
+// happens here. start is the span of the async keyword when set.
 func (p *parser) parseGenericArrow(start *gast.Span) (Expr, error) {
-	snapshot := p.snapshot()
 	span := p.Current().Span
 	async := false
 	if start != nil {
@@ -1147,15 +1118,51 @@ func (p *parser) parseGenericArrow(start *gast.Span) (Expr, error) {
 	}
 	typeParams, err := p.parseTypeParams()
 	if err != nil {
-		p.restore(snapshot)
 		return nil, err
 	}
 	params, err := p.parseParams()
 	if err != nil {
-		p.restore(snapshot)
 		return nil, err
 	}
-	return p.parseArrowTailChecked(span, snapshot, typeParams, params, async)
+	return p.parseArrowTail(span, typeParams, params, async)
+}
+
+// tryGenericArrow speculatively parses a generic arrow function from
+// the '<' at the cursor. The attempt is bounded by the type-parameter
+// grammar and rewinds the token stream on failure, leaving no trace.
+// In TSX mode the arrow must additionally disambiguate itself from a
+// JSX element - a type-parameter constraint or default, or a trailing
+// comma - before it wins, per tsc.
+func (p *parser) tryGenericArrow(start *gast.Span) (Expr, bool) {
+	mark := p.snapshot()
+	expr, err := p.parseGenericArrow(start)
+	if err != nil {
+		p.restore(mark)
+		return nil, false
+	}
+	if p.jsx {
+		if arrow, ok := expr.(*ArrowExpr); !ok || !arrowDisambiguated(arrow, p.typeParamsTrailingComma) {
+			p.restore(mark)
+			return nil, false
+		}
+	}
+	return expr, true
+}
+
+// arrowDisambiguated reports whether a parsed generic arrow carries a
+// marker TypeScript requires in TSX files: a type-parameter constraint
+// or default, or a trailing comma in the parameter list (tracked by
+// parseTypeParams, since commas do not reach the AST).
+func arrowDisambiguated(arrow *ArrowExpr, trailingComma bool) bool {
+	if trailingComma {
+		return true
+	}
+	for _, param := range arrow.TypeParams {
+		if param.Constraint != nil || param.Default != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // parseParenArrow parses a parenthesized arrow function; the "(" is
@@ -1215,18 +1222,6 @@ func (p *parser) parseArrowTail(start gast.Span, typeParams []*TypeParam, params
 	}
 	p.inAsync, p.inGenerator, p.inFunction = savedAsync, savedGen, savedFn
 	node.Span = gast.Merge(start, node.Body.Pos())
-	return node, nil
-}
-
-// parseArrowTailChecked is parseArrowTail for the speculative generic
-// arrow: failures rewind to snapshot and re-report so the caller can
-// fall back to comparison parsing.
-func (p *parser) parseArrowTailChecked(start gast.Span, snapshot int, typeParams []*TypeParam, params []*Param, async bool) (Expr, error) {
-	node, err := p.parseArrowTail(start, typeParams, params, async)
-	if err != nil {
-		p.restore(snapshot)
-		return nil, err
-	}
 	return node, nil
 }
 

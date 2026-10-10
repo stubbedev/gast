@@ -61,12 +61,20 @@ func decodeSingleQuoted(text string) string {
 	return builder.String()
 }
 
+// decodeDoubleQuoted decodes the escapes of double-quoted and shell
+// exec text, stripping one pair of surrounding quotes or backticks
+// when both ends match. Literal chunks of an interpolated string decode
+// with decodeEscapes, which never strips.
 func decodeDoubleQuoted(text string) string {
-	var builder strings.Builder
 	body := text
-	if len(body) >= 2 && (body[0] == '"' || body[0] == '`') {
+	if len(body) >= 2 && (body[0] == '"' || body[0] == '`') && body[len(body)-1] == body[0] {
 		body = body[1 : len(body)-1]
 	}
+	return decodeEscapes(body)
+}
+
+func decodeEscapes(body string) string {
+	var builder strings.Builder
 	for index := 0; index < len(body); index++ {
 		if body[index] != '\\' || index+1 >= len(body) {
 			builder.WriteByte(body[index])

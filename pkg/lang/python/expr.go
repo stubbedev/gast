@@ -476,6 +476,7 @@ func (p *parser) parseParenAtom() (Expr, error) {
 	if _, err := p.Expect(RParen, "')'"); err != nil {
 		return nil, err
 	}
+	markParenthesizedStar(first)
 	return first, nil
 }
 
@@ -955,6 +956,7 @@ func (p *parser) parseTargetExpr() (Expr, error) {
 		if tuple, ok := base.(*TupleExpr); ok {
 			tuple.Parenthesized = true
 		}
+		markParenthesizedStar(base)
 	case LBracket:
 		open := p.Advance()
 		var elts []Expr
@@ -1006,6 +1008,15 @@ func (p *parser) parseTargetExpr() (Expr, error) {
 			}
 			return base, nil
 		}
+	}
+}
+
+// markParenthesizedStar flags a lone starred expression that was
+// wrapped in parentheses, as in (*b): the symbol-table checks reject
+// such stars in assignment and for targets.
+func markParenthesizedStar(expr Expr) {
+	if star, ok := expr.(*StarredExpr); ok {
+		star.Parenthesized = true
 	}
 }
 

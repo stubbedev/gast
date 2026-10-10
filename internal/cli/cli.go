@@ -38,6 +38,7 @@ var frontends = []frontend{
 	{name: "sass", tokenize: sass.Tokenize, validate: sass.Validate, extensions: []string{".sass"}},
 	{name: "python", tokenize: python.Tokenize, validate: python.Validate, extensions: []string{".py"}},
 	{name: "typescript", tokenize: ts.Tokenize, validate: ts.Validate, extensions: []string{".ts"}},
+	{name: "typescript", tokenize: ts.Tokenize, validate: ts.ValidateTSX, extensions: []string{".tsx"}},
 }
 
 // Run executes the CLI and returns the process exit code.

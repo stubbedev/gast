@@ -33,19 +33,23 @@ type Element struct {
 	Children []Node
 }
 
-// Attribute is one attribute. Value is the raw source text without the
-// surrounding quotes and with entities undecoded; it is empty for a
-// valueless attribute.
+// Attribute is one attribute. Value is the decoded value - character
+// references resolved per the WHATWG tokenizer rules - without the
+// surrounding quotes; it is empty for a valueless attribute. The raw
+// source text, entities included, remains available through the span.
 type Attribute struct {
 	gast.Span
 	Name  string
 	Value string
 }
 
-// Text is character data; entity references remain raw source text.
+// Text is character data. Text holds the raw source including any
+// character references; Value holds the same data with the references
+// decoded.
 type Text struct {
 	gast.Span
-	Text string
+	Text  string
+	Value string
 }
 
 // Comment is a <!-- --> comment or a bogus <! comment; Text holds the

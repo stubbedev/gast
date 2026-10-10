@@ -47,7 +47,14 @@ assert condition
 assert condition, "message"
 
 global counter
-nonlocal binding
+
+
+def outer():
+    binding = 1
+
+    def inner():
+        nonlocal binding
+        return binding
 
 
 def gen():
@@ -84,4 +91,7 @@ m = (a @ b) @ c
 ternary = "yes" if flag else "no"
 chain = a if b else c if d else e
 
-result = (yield value)
+
+def consumer():
+    result = (yield value)
+    return result

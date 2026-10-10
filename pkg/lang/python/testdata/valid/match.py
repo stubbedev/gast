@@ -23,8 +23,8 @@ def classify(value):
             return "seq with tail"
         case (a, b):
             return "pair"
-        case (a):
-            return "group"
+        case ("pair" | "tuple"):
+            return "group or"
         case (a,):
             return "one tuple"
         case {"key": v, "other": w, **rest}:

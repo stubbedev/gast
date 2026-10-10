@@ -2,14 +2,21 @@ package python
 
 // Parse tokenizes and parses source and returns the module AST. A nil
 // error means the source is syntactically valid Python 3.12/3.13;
-// lexical and grammar violations return *gast.LexError or
-// *gast.ParseError.
+// lexical, grammar, and symbol-table violations return *gast.LexError
+// or *gast.ParseError, mirroring what python3's compile() rejects.
 func Parse(source string) (*File, error) {
 	tokens, err := Tokenize(source)
 	if err != nil {
 		return nil, err
 	}
-	return newParser(tokens, source).parseModule()
+	file, err := newParser(tokens, source).parseModule()
+	if err != nil {
+		return nil, err
+	}
+	if err := checkFile(file); err != nil {
+		return nil, err
+	}
+	return file, nil
 }
 
 // Validate reports whether source is syntactically valid Python.

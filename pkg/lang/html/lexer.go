@@ -13,8 +13,10 @@ import (
 // of a sequence are buffered and flushed before new input is scanned.
 type lexer struct {
 	*gast.Cursor
-	raw     string // open raw-text/rcdata element name, "" in normal mode
-	pending []gast.Token
+	raw          string // open raw-text/rcdata element name, "" in normal mode
+	foreignName  string // open svg/math root name, "" outside foreign content
+	foreignDepth int    // nesting depth of the open foreign root
+	pending      []gast.Token
 }
 
 func newLexer(source string) *lexer {
@@ -159,7 +161,10 @@ func (l *lexer) scanUntil(kind, terminator, message string) (gast.Token, error) 
 
 // scanTag consumes a start or end tag with its attributes and buffers
 // every token after the first. A start tag of a raw-text or rcdata
-// element (not self-closed) switches the lexer into raw mode.
+// element (not self-closed) switches the lexer into raw mode; inside
+// foreign content no such switch happens. Tag and attribute names keep
+// their source case in the tokens; the parser lowercases where HTML
+// rules require it.
 func (l *lexer) scanTag(end bool) (gast.Token, error) {
 	l.Advance() // <
 	l.Advance() // '/' or the first name byte
@@ -197,10 +202,35 @@ func (l *lexer) scanTag(end bool) (gast.Token, error) {
 			return gast.Token{}, err
 		}
 	}
-	if !end && !selfClosed && (rawTextElements[name] || rcdataElements[name]) {
+	l.trackForeign(name, end, selfClosed)
+	if !end && !selfClosed && l.foreignName == "" &&
+		(rawTextElements[name] || rcdataElements[name]) {
 		l.raw = name
 	}
 	return openToken, nil
+}
+
+// trackForeign maintains foreign-content mode: a start tag of svg or
+// math (not self-closed) enters it, the matching end tag of the root
+// leaves it, and nested same-name roots deepen it. Inside foreign
+// content the lexer never enters raw-text or rcdata mode.
+func (l *lexer) trackForeign(name string, end, selfClosed bool) {
+	switch {
+	case l.foreignName == "":
+		if !end && !selfClosed && foreignRoots[name] {
+			l.foreignName = name
+			l.foreignDepth = 1
+		}
+	case end:
+		if name == l.foreignName {
+			l.foreignDepth--
+			if l.foreignDepth == 0 {
+				l.foreignName = ""
+			}
+		}
+	case !selfClosed && name == l.foreignName:
+		l.foreignDepth++
+	}
 }
 
 // scanAttribute consumes one attribute: a name, optionally followed by

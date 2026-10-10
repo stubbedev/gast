@@ -1,6 +1,7 @@
 // Package php implements a PHP frontend for gast: a lexer, a
 // recursive-descent parser producing a spanned AST, and syntax
-// validation. It targets PHP 8 syntax.
+// validation. It targets PHP 8 syntax, including __halt_compiler and
+// string interpolation as structured parts.
 package php
 
 // Token kinds. Every kind constant spells its token text exactly once;
@@ -21,6 +22,9 @@ const (
 	KindInt    = "int"
 	KindFloat  = "float"
 	KindString = "string" // single-quoted, double-quoted, heredoc, shell exec
+
+	KindHaltCompiler = "halt_compiler" // __halt_compiler(); the token covers the call through ';'
+	KindRawData      = "raw_data"      // file remainder after __halt_compiler();
 )
 
 // Punctuation and operator kinds; the constant value is the exact token
@@ -176,6 +180,10 @@ const (
 	wordFrom     = "from"
 )
 
+// wordHaltCompiler is the reserved __halt_compiler spelling; it is
+// matched case-insensitively and never lexes as a plain identifier.
+const wordHaltCompiler = "__halt_compiler"
+
 // keywords maps lowercase reserved spellings to their kind.
 var keywords = buildKeywordMap()
 
@@ -211,6 +219,11 @@ const (
 	CastObject = "object"
 	CastUnset  = "unset"
 )
+
+// StringBare is the StringLit kind of the unquoted word indexing a
+// variable inside interpolation, as in "$arr[key]", which reads the
+// 'key' entry.
+const StringBare = "bare"
 
 // casts maps each accepted cast spelling, lowercased, to the canonical
 // name.

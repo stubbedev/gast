@@ -720,6 +720,63 @@ type InstantiationExpr struct {
 	TypeArgs []TypeNode
 }
 
+// JSX expressions (TSX mode).
+
+// JSXChild is a node that can appear inside a JSX element: raw text, a
+// nested element, or an expression container.
+type JSXChild interface {
+	Node
+	jsxChild()
+}
+
+// JSXElement is a JSX element `<name attrs>children</name>`, a
+// self-closing `<name attrs />`, or a fragment `<>children</>`
+// (Fragment set, Name nil). Text is kept raw: JSX entities such as
+// &amp; are not decoded.
+type JSXElement struct {
+	gast.Span
+	Fragment    bool
+	Name        *JSXName
+	Attrs       []*JSXAttr
+	Children    []JSXChild
+	SelfClosing bool
+}
+
+// JSXName is a JSX element or attribute name: a plain name (`div`), a
+// member chain (`A.B.C`, Namespace false), or a namespaced name
+// (`svg:path`, Namespace true).
+type JSXName struct {
+	gast.Span
+	Parts     []string
+	Namespace bool
+}
+
+// JSXAttr is one JSX attribute: `name`, `name="v"`, `name={expr}`, or
+// a spread `{...expr}` (Spread set, Name invalid). Value is nil for
+// shorthand boolean attributes; string values keep their raw quoted
+// text and entities are not decoded.
+type JSXAttr struct {
+	gast.Span
+	Name   JSXName
+	Value  Expr
+	Spread Expr
+}
+
+// JSXText is raw text between children; Text is the undecoded source
+// slice, so raw '<' and '>' appear literally and entities stay raw.
+type JSXText struct {
+	gast.Span
+	Text string
+}
+
+// JSXExprContainer is a `{expr}` child or attribute value; Expr is nil
+// only for the empty `{}` child container, which is legal so JSX
+// comments `{/* ... */}` have somewhere to live.
+type JSXExprContainer struct {
+	gast.Span
+	Expr Expr
+}
+
 // Shared nodes.
 
 // Param is one function parameter: a binding with an optional type
@@ -1042,46 +1099,51 @@ func (PropertyDef) classMember()   {}
 func (ClassIndexSig) classMember() {}
 func (StaticBlock) classMember()   {}
 
-func (IdentExpr) expr()          {}
-func (BlockStmt) expr()          {} // arrow function block bodies
-func (PrivateName) expr()        {}
-func (ThisExpr) expr()           {}
-func (SuperExpr) expr()          {}
-func (NumberLit) expr()          {}
-func (BigIntLit) expr()          {}
-func (StringLit) expr()          {}
-func (RegexLit) expr()           {}
-func (BoolLit) expr()            {}
-func (NullLit) expr()            {}
-func (TemplateLit) expr()        {}
-func (TaggedTemplate) expr()     {}
-func (ArrayExpr) expr()          {}
-func (SpreadElement) expr()      {}
-func (ObjectExpr) expr()         {}
-func (Property) expr()           {}
-func (SpreadProperty) expr()     {}
-func (ParenExpr) expr()          {}
-func (FunctionExpr) expr()       {}
-func (ClassExpr) expr()          {}
-func (ArrowExpr) expr()          {}
-func (UnaryExpr) expr()          {}
-func (UpdateExpr) expr()         {}
-func (BinaryExpr) expr()         {}
-func (AssignExpr) expr()         {}
-func (CondExpr) expr()           {}
-func (SequenceExpr) expr()       {}
-func (CallExpr) expr()           {}
-func (NewExpr) expr()            {}
-func (MemberExpr) expr()         {}
-func (YieldExpr) expr()          {}
-func (AwaitExpr) expr()          {}
-func (ImportCall) expr()         {}
-func (MetaProperty) expr()       {}
-func (TypeAssertionExpr) expr()  {}
-func (AngleAssertionExpr) expr() {}
-func (SatisfiesExpr) expr()      {}
-func (NonNullExpr) expr()        {}
-func (InstantiationExpr) expr()  {}
+func (IdentExpr) expr()            {}
+func (BlockStmt) expr()            {} // arrow function block bodies
+func (PrivateName) expr()          {}
+func (ThisExpr) expr()             {}
+func (SuperExpr) expr()            {}
+func (NumberLit) expr()            {}
+func (BigIntLit) expr()            {}
+func (StringLit) expr()            {}
+func (RegexLit) expr()             {}
+func (BoolLit) expr()              {}
+func (NullLit) expr()              {}
+func (TemplateLit) expr()          {}
+func (TaggedTemplate) expr()       {}
+func (ArrayExpr) expr()            {}
+func (SpreadElement) expr()        {}
+func (ObjectExpr) expr()           {}
+func (Property) expr()             {}
+func (SpreadProperty) expr()       {}
+func (ParenExpr) expr()            {}
+func (FunctionExpr) expr()         {}
+func (ClassExpr) expr()            {}
+func (ArrowExpr) expr()            {}
+func (UnaryExpr) expr()            {}
+func (UpdateExpr) expr()           {}
+func (BinaryExpr) expr()           {}
+func (AssignExpr) expr()           {}
+func (CondExpr) expr()             {}
+func (SequenceExpr) expr()         {}
+func (CallExpr) expr()             {}
+func (NewExpr) expr()              {}
+func (MemberExpr) expr()           {}
+func (YieldExpr) expr()            {}
+func (AwaitExpr) expr()            {}
+func (ImportCall) expr()           {}
+func (MetaProperty) expr()         {}
+func (TypeAssertionExpr) expr()    {}
+func (AngleAssertionExpr) expr()   {}
+func (SatisfiesExpr) expr()        {}
+func (NonNullExpr) expr()          {}
+func (InstantiationExpr) expr()    {}
+func (JSXElement) expr()           {}
+func (JSXExprContainer) expr()     {}
+func (JSXElement) jsxChild()       {}
+func (JSXText) jsxChild()          {}
+func (JSXExprContainer) jsxChild() {}
 
 func (IdentExpr) pattern()      {}
 func (ThisExpr) pattern()       {}

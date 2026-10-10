@@ -1,7 +1,7 @@
 // Package python implements a Python 3.12/3.13 frontend for gast: a
 // lexer with INDENT/DEDENT and PEP 701 f-string tokens, a
 // recursive-descent parser producing a spanned AST, and syntax
-// validation.
+// validation covering CPython's compile-time symbol-table checks.
 package python
 
 // Token kinds for tokens whose text is not fixed punctuation: names,

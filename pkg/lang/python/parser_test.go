@@ -293,11 +293,10 @@ func TestParseCallsAndSubscripts(t *testing.T) {
 func TestParseComprehensions(t *testing.T) {
 	t.Parallel()
 	for source, want := range map[string]string{
-		"[x for x in y]":       "list",
-		"{x for x in y}":       "set",
-		"{x: 1 for x in y}":    "dict",
-		"(x for x in y)":       "generator",
-		"[x async for x in y]": "list",
+		"[x for x in y]":    "list",
+		"{x for x in y}":    "set",
+		"{x: 1 for x in y}": "dict",
+		"(x for x in y)":    "generator",
 	} {
 		comp, ok := exprOf(t, source).(*ComprehensionExpr)
 		if !ok {
@@ -306,6 +305,16 @@ func TestParseComprehensions(t *testing.T) {
 		if comp.Kind != want {
 			t.Fatalf("%s: kind %q, want %q", source, comp.Kind, want)
 		}
+	}
+	// an async comprehension parses the same way, inside its async home
+	file, err := Parse("async def f():\n    return [x async for x in y]\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fn := file.Stmts[0].(*FunctionDef)
+	comp, ok := fn.Body[0].(*ReturnStmt).Value.(*ComprehensionExpr)
+	if !ok || comp.Kind != "list" || !comp.Generators[0].Async {
+		t.Fatalf("async comprehension: %#v", comp)
 	}
 	nested, ok := exprOf(t, "[a for b in c for d in e if f if g]").(*ComprehensionExpr)
 	if !ok || len(nested.Generators) != 2 || len(nested.Generators[1].Ifs) != 2 {

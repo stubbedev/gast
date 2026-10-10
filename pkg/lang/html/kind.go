@@ -4,8 +4,11 @@
 // tags must match, elements must close, attributes must be unique and
 // well quoted) and lenient about details browsers recover from
 // (implicit sibling closing, optional html/head/body wrappers, a raw
-// "<" in text). Entities in text and attribute values are kept as raw
-// source text; they are never decoded into nodes.
+// "<" in text). Character references in text and attribute values
+// are decoded per the tokenizer rules; the raw source stays available
+// through node spans. SVG and MathML foreign content is supported:
+// names keep their case, self-closing works for any element, and the
+// spec's case-adjustment and HTML integration point rules apply.
 package html
 
 // Token kinds. Tag punctuation constants spell their token text
@@ -14,9 +17,9 @@ package html
 const (
 	KindEOF = "eof"
 
-	KindText    = "text"    // character data; entities stay raw
+	KindText    = "text"    // character data; raw source, Value decoded
 	KindRawText = "raw"     // script/style content, verbatim
-	KindRCDATA  = "rcdata"  // title/textarea content; entities stay raw
+	KindRCDATA  = "rcdata"  // title/textarea content; raw source, Value decoded
 	KindComment = "comment" // <!-- --> and bogus <! comments
 	KindCDATA   = "cdata"   // <![CDATA[ ]]>
 	KindDoctype = "doctype" // <!DOCTYPE ...>

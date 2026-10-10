@@ -1,6 +1,9 @@
 package php
 
 import (
+	"errors"
+	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -395,6 +398,227 @@ func TestParseSpans(t *testing.T) {
 	binary := exprOf(t, "1 + 2")
 	if binary.Pos().Start != 6 || binary.Pos().End != 11 {
 		t.Errorf("binary span: %v", binary.Pos())
+	}
+}
+
+func TestParseHaltCompiler(t *testing.T) {
+	t.Parallel()
+	t.Run("valid placements", func(t *testing.T) {
+		t.Parallel()
+		for _, tc := range []struct {
+			source string
+			data   string
+		}{{
+			source: "<?php __halt_compiler();\nany bytes ?> <?php $ $",
+			data:   "\nany bytes ?> <?php $ $",
+		}, {
+			source: "<?php __halt_compiler() /* c */ ; trailing",
+			data:   " trailing",
+		}, {
+			source: "<?php __halt_compiler();",
+			data:   "",
+		}, {
+			source: "<?php echo 1; ?> html <?php __halt_compiler(); data",
+			data:   " data",
+		}} {
+			file, err := Parse(tc.source)
+			if err != nil {
+				t.Fatalf("%s: %v", tc.source, err)
+			}
+			halt, ok := file.Stmts[len(file.Stmts)-1].(*HaltCompilerStmt)
+			if !ok {
+				t.Fatalf("%s: got %T", tc.source, file.Stmts[0])
+			}
+			if covered := tc.source[halt.Start:halt.End]; !strings.HasPrefix(covered, "__halt_compiler") || !strings.HasSuffix(covered, ";") {
+				t.Errorf("%s: span %v covers %q", tc.source, halt.Span, covered)
+			}
+			if tc.data == "" {
+				if halt.Data != nil {
+					t.Errorf("%s: data %#v, want none", tc.source, halt.Data)
+				}
+			} else {
+				if halt.Data == nil || halt.Data.Text != tc.data {
+					t.Errorf("%s: data %#v, want %q", tc.source, halt.Data, tc.data)
+				}
+				want := len(tc.source) - len(tc.data)
+				if halt.Data.Start != want || halt.Data.End != len(tc.source) {
+					t.Errorf("%s: data span %v", tc.source, halt.Data.Span)
+				}
+			}
+		}
+	})
+
+	t.Run("invalid placements", func(t *testing.T) {
+		t.Parallel()
+		sources := []string{
+			"<?php function f() { __halt_compiler(); }",
+			"<?php class C { function m() { __halt_compiler(); } }",
+			"<?php if (true) { __halt_compiler(); }",
+			"<?php if (true) __halt_compiler();",
+			"<?php { __halt_compiler(); }",
+			"<?php while (true): __halt_compiler(); endwhile;",
+			"<?php namespace A { __halt_compiler(); }",
+			"<?php $x = __halt_compiler();",
+			"<?php $x = __halt_compiler;",
+			"<?php function __halt_compiler() {}",
+			"<?php class __halt_compiler {}",
+			"<?php foo(__halt_compiler());",
+			"<?php __halt_compiler;",
+			"<?php __halt_compiler",
+			"<?php __halt_compiler()",
+			"<?php __halt_compiler() data",
+			"<?php __halt_compiler(1);",
+		}
+		for _, source := range sources {
+			_, err := Parse(source)
+			if err == nil {
+				t.Errorf("%s: expected error", source)
+				continue
+			}
+			var parseErr *gast.ParseError
+			if !errors.As(err, &parseErr) {
+				t.Errorf("%s: expected *gast.ParseError, got %T", source, err)
+				continue
+			}
+			if parseErr.Pos.Start < 0 || parseErr.Pos.End > len(source) || parseErr.Pos.Start >= parseErr.Pos.End && parseErr.Pos.End == len(source) && parseErr.Pos.Start != len(source) {
+				t.Errorf("%s: error span %v out of range", source, parseErr.Pos)
+			}
+		}
+	})
+}
+
+// partsOf parses `<?php $s = <literal>;` and returns the string parts.
+func partsOf(t *testing.T, literal string) []StringPart {
+	t.Helper()
+	file, err := Parse("<?php $s = " + literal + ";")
+	if err != nil {
+		t.Fatalf("%s: %v", literal, err)
+	}
+	stmt := file.Stmts[0].(*ExpressionStmt)
+	return stmt.Expr.(*AssignExpr).Value.(*StringLit).Parts
+}
+
+func TestParseInterpolationParts(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		literal string
+		want    []string // shape per part: "lit:<value>" or "expr:<raw>:<type>"
+	}{
+		{`"plain text"`, nil},
+		{`"price 5$ and $$"`, nil},
+		{`"escaped \$x stays raw"`, nil},
+		{`'single $raw'`, nil},
+		{`"$x"`, []string{"expr:$x:*php.Variable"}},
+		{`"pre $x post"`, []string{"lit:pre ", "expr:$x:*php.Variable", "lit: post"}},
+		{`"$$x"`, []string{"expr:$$x:*php.VariableVariable"}},
+		{`"$obj->prop"`, []string{"expr:$obj->prop:*php.PropertyFetch"}},
+		{`"$x->a->b"`, []string{"expr:$x->a:*php.PropertyFetch", "lit:->b"}},
+		{`"$x?->p"`, []string{"expr:$x?->p:*php.NullsafePropertyFetch"}},
+		{`"$x-> tail"`, []string{"expr:$x:*php.Variable", "lit:-> tail"}},
+		{`"$arr[key]"`, []string{"expr:$arr[key]:*php.IndexExpr"}},
+		{`"$arr[0]"`, []string{"expr:$arr[0]:*php.IndexExpr"}},
+		{`"$arr[-1]"`, []string{"expr:$arr[-1]:*php.IndexExpr"}},
+		{`"$arr[$i]"`, []string{"expr:$arr[$i]:*php.IndexExpr"}},
+		{`"$arr[key][x]"`, []string{"expr:$arr[key]:*php.IndexExpr", "lit:[x]"}},
+		{`"${name}"`, []string{"expr:${name}:*php.Variable"}},
+		{`"${x[0]}"`, []string{"expr:${x[0]}:*php.IndexExpr"}},
+		{`"${'lit'}"`, []string{"expr:${'lit'}:*php.VariableVariable"}},
+		{`"${$v}"`, []string{"expr:${$v}:*php.VariableVariable"}},
+		{`"{$a->b[1]}"`, []string{"expr:{$a->b[1]}:*php.IndexExpr"}},
+		{`"{$o->m('}')}"`, []string{"expr:{$o->m('}')}:*php.MethodCall"}},
+		{`"{$o->m()}"`, []string{"expr:{$o->m()}:*php.MethodCall"}},
+		{`"{$x::$y}"`, []string{"expr:{$x::$y}:*php.StaticPropertyFetch"}},
+		{`"{$x::$y()}"`, []string{"expr:{$x::$y()}:*php.CallExpr"}},
+		{`"{$$v}"`, []string{"expr:{$$v}:*php.VariableVariable"}},
+		{`"{@@$x}"`, []string{"lit:{@@", "expr:$x:*php.Variable", "lit:}"}},
+		{`"{ $x } stays literal"`, []string{"lit:{ ", "expr:$x:*php.Variable", "lit: } stays literal"}},
+		{`"a $x\nb"`, []string{"lit:a ", "expr:$x:*php.Variable", "lit:\nb"}},
+		{"`cmd $v out`", []string{"lit:cmd ", "expr:$v:*php.Variable", "lit: out"}},
+		{`"a $x\n\"q\" b"`, []string{"lit:a ", "expr:$x:*php.Variable", "lit:\n\\\"q\\\" b"}},
+	}
+	for _, tc := range tests {
+		parts := partsOf(t, tc.literal)
+		var got []string
+		for _, part := range parts {
+			switch p := part.(type) {
+			case *LiteralPart:
+				got = append(got, "lit:"+p.Value)
+			case *ExprPart:
+				got = append(got, "expr:"+p.Raw+":"+fmt.Sprintf("%T", p.Expr))
+			}
+		}
+		if !slices.Equal(got, tc.want) {
+			t.Errorf("%s: got %v, want %v", tc.literal, got, tc.want)
+		}
+	}
+}
+
+func TestParseInterpolationHeredoc(t *testing.T) {
+	t.Parallel()
+	parts := partsOf(t, "<<<EOT\nhead $x {$o->p} tail\nEOT")
+	if len(parts) != 5 {
+		t.Fatalf("heredoc parts: %#v", parts)
+	}
+	lit, ok := parts[0].(*LiteralPart)
+	if !ok || lit.Value != "head " || lit.Start == 0 {
+		t.Fatalf("heredoc literal part: %#v", parts[0])
+	}
+	if expr, ok := parts[2].(*LiteralPart); !ok || expr.Value != " " {
+		t.Fatalf("heredoc middle part: %#v", parts[2])
+	}
+	if _, ok := parts[3].(*ExprPart); !ok {
+		t.Fatalf("heredoc complex part: %#v", parts[3])
+	}
+	if expr, ok := parts[4].(*LiteralPart); !ok || expr.Value != " tail" {
+		t.Fatalf("heredoc trailing part: %#v", parts[4])
+	}
+	if len(partsOf(t, "<<<'EOT'\nnowdoc $x raw\nEOT")) != 0 {
+		t.Error("nowdoc must not interpolate")
+	}
+}
+
+func TestParseInterpolationSpans(t *testing.T) {
+	t.Parallel()
+	source := `<?php $s = "a $x->p b";`
+	file, err := Parse(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lit := file.Stmts[0].(*ExpressionStmt).Expr.(*AssignExpr).Value.(*StringLit)
+	if lit.Pos().Start != 11 || lit.Pos().End != 22 {
+		t.Errorf("literal span: %v", lit.Pos())
+	}
+	part, ok := lit.Parts[1].(*ExprPart)
+	if !ok {
+		t.Fatalf("parts: %#v", lit.Parts)
+	}
+	if want := source[14:19]; part.Raw != want || part.Span != (gast.Span{Start: 14, End: 19}) {
+		t.Errorf("expr part: raw %q span %v, want %q {14 19}", part.Raw, part.Span, want)
+	}
+}
+
+func TestParseInterpolationInvalid(t *testing.T) {
+	t.Parallel()
+	literals := []string{
+		`"${x"`,  // unterminated ${
+		`"{$x"`,  // unterminated {$
+		`"$x["`,  // unterminated index
+		`"$x[]"`, // empty index
+		`"$x[1a]"`,
+		`"{$x . 'c'}"`, // binary operator in {$...}
+		`"{$x + 1}"`,
+		`"{$1}"`,    // literal root
+		`"{$ x}"`,   // space after {$
+		`"{$x::C}"`, // bare name after ::
+		`"{$x ?: 1}"`,
+		`"{$@$x}"`,
+		`"${x junk}"`,
+		`"{$x = 1}"`,
+	}
+	for _, literal := range literals {
+		if err := Validate("<?php $s = " + literal + ";"); err == nil {
+			t.Errorf("%s: expected error", literal)
+		}
 	}
 }
 
