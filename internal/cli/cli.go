@@ -7,27 +7,37 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/stubbedev/gast/pkg/gast"
+	"github.com/stubbedev/gast/pkg/lang/css"
+	"github.com/stubbedev/gast/pkg/lang/html"
+	"github.com/stubbedev/gast/pkg/lang/js"
 	"github.com/stubbedev/gast/pkg/lang/php"
+	"github.com/stubbedev/gast/pkg/lang/python"
+	"github.com/stubbedev/gast/pkg/lang/sass"
+	"github.com/stubbedev/gast/pkg/lang/scss"
+	"github.com/stubbedev/gast/pkg/lang/ts"
 )
 
 // frontend bundles a language's parse and tokenize entry points.
 type frontend struct {
-	name      string
-	tokenize  func(string) ([]gast.Token, error)
-	validate  func(string) error
-	extension string
+	name       string
+	tokenize   func(string) ([]gast.Token, error)
+	validate   func(string) error
+	extensions []string
 }
 
 var frontends = []frontend{
-	{
-		name:      "php",
-		tokenize:  php.Tokenize,
-		validate:  php.Validate,
-		extension: ".php",
-	},
+	{name: "php", tokenize: php.Tokenize, validate: php.Validate, extensions: []string{".php"}},
+	{name: "javascript", tokenize: js.Tokenize, validate: js.Validate, extensions: []string{".js", ".mjs", ".cjs"}},
+	{name: "html", tokenize: html.Tokenize, validate: html.Validate, extensions: []string{".html"}},
+	{name: "css", tokenize: css.Tokenize, validate: css.Validate, extensions: []string{".css"}},
+	{name: "scss", tokenize: scss.Tokenize, validate: scss.Validate, extensions: []string{".scss"}},
+	{name: "sass", tokenize: sass.Tokenize, validate: sass.Validate, extensions: []string{".sass"}},
+	{name: "python", tokenize: python.Tokenize, validate: python.Validate, extensions: []string{".py"}},
+	{name: "typescript", tokenize: ts.Tokenize, validate: ts.Validate, extensions: []string{".ts"}},
 }
 
 // Run executes the CLI and returns the process exit code.
@@ -110,7 +120,7 @@ func frontendFor(path string) (frontend, error) {
 	}
 	extension := path[dot:]
 	for _, f := range frontends {
-		if f.extension == extension {
+		if slices.Contains(f.extensions, extension) {
 			return f, nil
 		}
 	}

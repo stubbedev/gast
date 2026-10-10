@@ -1,0 +1,607 @@
+$base: 4px;
+@use "sass:map";
+$colors: (a: #123, b: #456);
+@mixin pad($n) { padding: $n * $base; }
+
+.block-0 {
+  @include pad(0);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 0px solid;
+    &:hover, &:focus { opacity: 0.0; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'0'} { top: 0; }
+  }
+}
+.block-1 {
+  @include pad(1);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 1px solid;
+    &:hover, &:focus { opacity: 0.1; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'1'} { top: 0; }
+  }
+}
+.block-2 {
+  @include pad(2);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 2px solid;
+    &:hover, &:focus { opacity: 0.2; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'2'} { top: 0; }
+  }
+}
+.block-3 {
+  @include pad(3);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 0px solid;
+    &:hover, &:focus { opacity: 0.3; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'3'} { top: 0; }
+  }
+}
+.block-4 {
+  @include pad(4);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 1px solid;
+    &:hover, &:focus { opacity: 0.4; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'4'} { top: 0; }
+  }
+}
+.block-5 {
+  @include pad(0);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 2px solid;
+    &:hover, &:focus { opacity: 0.5; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'5'} { top: 0; }
+  }
+}
+.block-6 {
+  @include pad(1);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 0px solid;
+    &:hover, &:focus { opacity: 0.6; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'6'} { top: 0; }
+  }
+}
+.block-7 {
+  @include pad(2);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 1px solid;
+    &:hover, &:focus { opacity: 0.7; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'7'} { top: 0; }
+  }
+}
+.block-8 {
+  @include pad(3);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 2px solid;
+    &:hover, &:focus { opacity: 0.8; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'8'} { top: 0; }
+  }
+}
+.block-9 {
+  @include pad(4);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 0px solid;
+    &:hover, &:focus { opacity: 0.0; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'9'} { top: 0; }
+  }
+}
+.block-10 {
+  @include pad(0);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 1px solid;
+    &:hover, &:focus { opacity: 0.1; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'10'} { top: 0; }
+  }
+}
+.block-11 {
+  @include pad(1);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 2px solid;
+    &:hover, &:focus { opacity: 0.2; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'11'} { top: 0; }
+  }
+}
+.block-12 {
+  @include pad(2);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 0px solid;
+    &:hover, &:focus { opacity: 0.3; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'12'} { top: 0; }
+  }
+}
+.block-13 {
+  @include pad(3);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 1px solid;
+    &:hover, &:focus { opacity: 0.4; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'13'} { top: 0; }
+  }
+}
+.block-14 {
+  @include pad(4);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 2px solid;
+    &:hover, &:focus { opacity: 0.5; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'14'} { top: 0; }
+  }
+}
+.block-15 {
+  @include pad(0);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 0px solid;
+    &:hover, &:focus { opacity: 0.6; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'15'} { top: 0; }
+  }
+}
+.block-16 {
+  @include pad(1);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 1px solid;
+    &:hover, &:focus { opacity: 0.7; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'16'} { top: 0; }
+  }
+}
+.block-17 {
+  @include pad(2);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 2px solid;
+    &:hover, &:focus { opacity: 0.8; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'17'} { top: 0; }
+  }
+}
+.block-18 {
+  @include pad(3);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 0px solid;
+    &:hover, &:focus { opacity: 0.0; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'18'} { top: 0; }
+  }
+}
+.block-19 {
+  @include pad(4);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 1px solid;
+    &:hover, &:focus { opacity: 0.1; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'19'} { top: 0; }
+  }
+}
+.block-20 {
+  @include pad(0);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 2px solid;
+    &:hover, &:focus { opacity: 0.2; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'20'} { top: 0; }
+  }
+}
+.block-21 {
+  @include pad(1);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 0px solid;
+    &:hover, &:focus { opacity: 0.3; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'21'} { top: 0; }
+  }
+}
+.block-22 {
+  @include pad(2);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 1px solid;
+    &:hover, &:focus { opacity: 0.4; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'22'} { top: 0; }
+  }
+}
+.block-23 {
+  @include pad(3);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 2px solid;
+    &:hover, &:focus { opacity: 0.5; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'23'} { top: 0; }
+  }
+}
+.block-24 {
+  @include pad(4);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 0px solid;
+    &:hover, &:focus { opacity: 0.6; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'24'} { top: 0; }
+  }
+}
+.block-25 {
+  @include pad(0);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 1px solid;
+    &:hover, &:focus { opacity: 0.7; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'25'} { top: 0; }
+  }
+}
+.block-26 {
+  @include pad(1);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 2px solid;
+    &:hover, &:focus { opacity: 0.8; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'26'} { top: 0; }
+  }
+}
+.block-27 {
+  @include pad(2);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 0px solid;
+    &:hover, &:focus { opacity: 0.0; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'27'} { top: 0; }
+  }
+}
+.block-28 {
+  @include pad(3);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 1px solid;
+    &:hover, &:focus { opacity: 0.1; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'28'} { top: 0; }
+  }
+}
+.block-29 {
+  @include pad(4);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 2px solid;
+    &:hover, &:focus { opacity: 0.2; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'29'} { top: 0; }
+  }
+}
+.block-30 {
+  @include pad(0);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 0px solid;
+    &:hover, &:focus { opacity: 0.3; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'30'} { top: 0; }
+  }
+}
+.block-31 {
+  @include pad(1);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 1px solid;
+    &:hover, &:focus { opacity: 0.4; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'31'} { top: 0; }
+  }
+}
+.block-32 {
+  @include pad(2);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 2px solid;
+    &:hover, &:focus { opacity: 0.5; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'32'} { top: 0; }
+  }
+}
+.block-33 {
+  @include pad(3);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 0px solid;
+    &:hover, &:focus { opacity: 0.6; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'33'} { top: 0; }
+  }
+}
+.block-34 {
+  @include pad(4);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 1px solid;
+    &:hover, &:focus { opacity: 0.7; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'34'} { top: 0; }
+  }
+}
+.block-35 {
+  @include pad(0);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 2px solid;
+    &:hover, &:focus { opacity: 0.8; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'35'} { top: 0; }
+  }
+}
+.block-36 {
+  @include pad(1);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 0px solid;
+    &:hover, &:focus { opacity: 0.0; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'36'} { top: 0; }
+  }
+}
+.block-37 {
+  @include pad(2);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 1px solid;
+    &:hover, &:focus { opacity: 0.1; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'37'} { top: 0; }
+  }
+}
+.block-38 {
+  @include pad(3);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 2px solid;
+    &:hover, &:focus { opacity: 0.2; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'38'} { top: 0; }
+  }
+}
+.block-39 {
+  @include pad(4);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 0px solid;
+    &:hover, &:focus { opacity: 0.3; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'39'} { top: 0; }
+  }
+}
+.block-40 {
+  @include pad(0);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 1px solid;
+    &:hover, &:focus { opacity: 0.4; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'40'} { top: 0; }
+  }
+}
+.block-41 {
+  @include pad(1);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 2px solid;
+    &:hover, &:focus { opacity: 0.5; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'41'} { top: 0; }
+  }
+}
+.block-42 {
+  @include pad(2);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 0px solid;
+    &:hover, &:focus { opacity: 0.6; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'42'} { top: 0; }
+  }
+}
+.block-43 {
+  @include pad(3);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 1px solid;
+    &:hover, &:focus { opacity: 0.7; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'43'} { top: 0; }
+  }
+}
+.block-44 {
+  @include pad(4);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 2px solid;
+    &:hover, &:focus { opacity: 0.8; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'44'} { top: 0; }
+  }
+}
+.block-45 {
+  @include pad(0);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 0px solid;
+    &:hover, &:focus { opacity: 0.0; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'45'} { top: 0; }
+  }
+}
+.block-46 {
+  @include pad(1);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 1px solid;
+    &:hover, &:focus { opacity: 0.1; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'46'} { top: 0; }
+  }
+}
+.block-47 {
+  @include pad(2);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 2px solid;
+    &:hover, &:focus { opacity: 0.2; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'47'} { top: 0; }
+  }
+}
+.block-48 {
+  @include pad(3);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 0px solid;
+    &:hover, &:focus { opacity: 0.3; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'48'} { top: 0; }
+  }
+}
+.block-49 {
+  @include pad(4);
+  margin-#{'left'}: 1px;
+  color: map.get($colors, a);
+  &__item {
+    border: 1px solid;
+    &:hover, &:focus { opacity: 0.4; }
+  }
+  @if 0 % 2 == 0 {
+    .even-#{'49'} { top: 0; }
+  }
+}
+@for $j from 1 through 5 { .gen-#{$j} { z-index: $j; } }
+@each $name, $hex in (a: #111, b: #222) { .theme-#{$name} { color: $hex; } }

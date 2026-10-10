@@ -1,0 +1,11 @@
+var a = 1, b;
+let x = 1_000, y = 0x1F_FF, z = 0o17, w = 0b1010_0001;
+const legacy = 0755, decimal = 089, f = 1.5e-3, big = 9007199254740993n;
+let s1 = 'single', s2 = "double\t\n\x41\u0042\u{1F600}ok";
+let arr = [1, , 3, , ...rest];
+let obj = { a, b: 2, ["c" + "d"]: 3, m() { return 1; }, get p() { return 2; }, set p(v) {}, ...spread };
+a = b = c;
+x **= 2;
+y ||= z;
+w &&= 1;
+big ??= 7;

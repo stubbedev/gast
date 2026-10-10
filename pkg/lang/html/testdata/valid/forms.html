@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<body>
+<form action="/submit" method="post">
+  <fieldset>
+    <legend>Personal data</legend>
+    <label for="name">Name</label>
+    <input type="text" id="name" name="name" required>
+    <label for="mail">Email</label>
+    <input type="email" id="mail" name="mail" placeholder="you@example.com">
+    <label for="role">Role</label>
+    <select id="role" name="role">
+      <option value="admin">Administrator</option>
+      <option value="user" selected>User</option>
+    </select>
+    <textarea id="bio" name="bio" rows="3" cols="40">Tell us &lt;about&gt; yourself &amp; your work</textarea>
+    <input type="checkbox" id="agree" name="agree">
+    <label for="agree">I agree</label>
+    <button type="submit">Send</button>
+  </fieldset>
+</form>
+</body>
+</html>

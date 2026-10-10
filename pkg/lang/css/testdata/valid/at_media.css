@@ -1,0 +1,17 @@
+@media screen and (min-width: 48em) {
+  .sidebar {
+    width: 30%;
+  }
+
+  @media (orientation: landscape) {
+    .sidebar {
+      width: 35%;
+  }
+}
+}
+
+@supports (display: grid) {
+  .layout {
+    display: grid;
+  }
+}

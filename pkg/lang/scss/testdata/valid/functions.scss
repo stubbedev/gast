@@ -1,0 +1,12 @@
+@function double($n) {
+  @return $n * 2;
+}
+
+@function grid-width($cols, $gap: 8px) {
+  @return $cols * 60px + ($cols - 1) * $gap;
+}
+
+.layout {
+  width: grid-width(4);
+  height: double(10px);
+}

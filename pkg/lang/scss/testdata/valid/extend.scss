@@ -1,0 +1,14 @@
+%button-base {
+  padding: 0.5em 1em;
+  border: 1px solid #999;
+}
+
+.button {
+  @extend %button-base;
+  color: black;
+}
+
+.button-primary {
+  @extend .button;
+  color: blue;
+}

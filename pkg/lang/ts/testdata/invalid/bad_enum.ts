@@ -1,0 +1,3 @@
+enum Broken {
+  A = ,
+  B

@@ -1,0 +1,11 @@
+$sizes: small, medium, large
+
+@each $size in $sizes
+  .icon-#{$size}
+    width: map-get((small: 8px, medium: 16px), $size)
+
+$themes: (light: #fff, dark: #000)
+
+@each $name, $color in $themes
+  .theme-#{$name}
+    color: $color

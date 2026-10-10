@@ -1,0 +1,18 @@
+:root {
+  --main-color: #ff6700;
+  --empty:;
+  --layout: {
+    ignored: raw tokens;
+  };
+}
+
+.values {
+  opacity: 0.5;
+  transition-delay: 1.5e3ms;
+  flex: 2e-2;
+  width: calc(100% - 10px);
+  font-size: 12pt;
+  animation: slide 3s ease-in-out 0s 2 alternate both;
+  content: "quote \" and \\ escape";
+  background: url(images/bg.png) no-repeat;
+}

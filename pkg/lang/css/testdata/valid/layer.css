@@ -1,0 +1,13 @@
+@layer reset, base, components;
+
+@layer base {
+  :root {
+    --gap: 0.5rem;
+  }
+}
+
+@layer components {
+  .button {
+    padding: var(--gap);
+  }
+}

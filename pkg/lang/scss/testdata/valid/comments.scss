@@ -1,0 +1,9 @@
+// Silent comment.
+a {
+  color: red; // trailing silent comment
+  /* loud comment */ padding: 0 /* inline */;
+}
+
+/* Multi-line
+   loud comment. */
+b { color: blue; }

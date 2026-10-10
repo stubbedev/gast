@@ -1,0 +1,26 @@
+input[type="text"],
+input[type=checkbox i],
+a[href^="https://"],
+a[href$=".pdf"],
+a[href*=example],
+img[alt~="logo"],
+[lang|="en"],
+[data-state] {
+  outline: none;
+}
+
+:is(ol, ul) > :where(li, item) {
+  list-style: none;
+}
+
+:not(:has(> img)) {
+  border-width: 1px;
+}
+
+li:nth-child(2n+1)::marker {
+  color: red;
+}
+
+p::first-line {
+  font-variant: small-caps;
+}

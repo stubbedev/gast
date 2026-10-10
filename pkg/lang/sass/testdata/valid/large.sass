@@ -1,0 +1,504 @@
+$base: 4px
+@mixin pad($n)
+  padding: $n * $base
+
+.block-0
+  @include pad(0)
+  color: rgb(0, 0, 0)
+  &__item
+    border: 0px solid
+    &:hover
+      opacity: 0.0
+  @if 0 % 2 == 0
+    .even-#{'0'}
+      top: 0
+.block-1
+  @include pad(1)
+  color: rgb(1, 2, 3)
+  &__item
+    border: 1px solid
+    &:hover
+      opacity: 0.1
+  @if 1 % 2 == 0
+    .even-#{'1'}
+      top: 0
+.block-2
+  @include pad(2)
+  color: rgb(2, 4, 6)
+  &__item
+    border: 2px solid
+    &:hover
+      opacity: 0.2
+  @if 2 % 2 == 0
+    .even-#{'2'}
+      top: 0
+.block-3
+  @include pad(3)
+  color: rgb(3, 6, 9)
+  &__item
+    border: 0px solid
+    &:hover
+      opacity: 0.3
+  @if 3 % 2 == 0
+    .even-#{'3'}
+      top: 0
+.block-4
+  @include pad(4)
+  color: rgb(4, 8, 12)
+  &__item
+    border: 1px solid
+    &:hover
+      opacity: 0.4
+  @if 4 % 2 == 0
+    .even-#{'4'}
+      top: 0
+.block-5
+  @include pad(0)
+  color: rgb(5, 10, 15)
+  &__item
+    border: 2px solid
+    &:hover
+      opacity: 0.5
+  @if 5 % 2 == 0
+    .even-#{'5'}
+      top: 0
+.block-6
+  @include pad(1)
+  color: rgb(6, 12, 18)
+  &__item
+    border: 0px solid
+    &:hover
+      opacity: 0.6
+  @if 6 % 2 == 0
+    .even-#{'6'}
+      top: 0
+.block-7
+  @include pad(2)
+  color: rgb(7, 14, 21)
+  &__item
+    border: 1px solid
+    &:hover
+      opacity: 0.7
+  @if 7 % 2 == 0
+    .even-#{'7'}
+      top: 0
+.block-8
+  @include pad(3)
+  color: rgb(8, 16, 24)
+  &__item
+    border: 2px solid
+    &:hover
+      opacity: 0.8
+  @if 8 % 2 == 0
+    .even-#{'8'}
+      top: 0
+.block-9
+  @include pad(4)
+  color: rgb(9, 18, 27)
+  &__item
+    border: 0px solid
+    &:hover
+      opacity: 0.0
+  @if 9 % 2 == 0
+    .even-#{'9'}
+      top: 0
+.block-10
+  @include pad(0)
+  color: rgb(10, 20, 30)
+  &__item
+    border: 1px solid
+    &:hover
+      opacity: 0.1
+  @if 10 % 2 == 0
+    .even-#{'10'}
+      top: 0
+.block-11
+  @include pad(1)
+  color: rgb(11, 22, 33)
+  &__item
+    border: 2px solid
+    &:hover
+      opacity: 0.2
+  @if 11 % 2 == 0
+    .even-#{'11'}
+      top: 0
+.block-12
+  @include pad(2)
+  color: rgb(12, 24, 36)
+  &__item
+    border: 0px solid
+    &:hover
+      opacity: 0.3
+  @if 12 % 2 == 0
+    .even-#{'12'}
+      top: 0
+.block-13
+  @include pad(3)
+  color: rgb(13, 26, 39)
+  &__item
+    border: 1px solid
+    &:hover
+      opacity: 0.4
+  @if 13 % 2 == 0
+    .even-#{'13'}
+      top: 0
+.block-14
+  @include pad(4)
+  color: rgb(14, 28, 42)
+  &__item
+    border: 2px solid
+    &:hover
+      opacity: 0.5
+  @if 14 % 2 == 0
+    .even-#{'14'}
+      top: 0
+.block-15
+  @include pad(0)
+  color: rgb(15, 30, 45)
+  &__item
+    border: 0px solid
+    &:hover
+      opacity: 0.6
+  @if 15 % 2 == 0
+    .even-#{'15'}
+      top: 0
+.block-16
+  @include pad(1)
+  color: rgb(16, 32, 48)
+  &__item
+    border: 1px solid
+    &:hover
+      opacity: 0.7
+  @if 16 % 2 == 0
+    .even-#{'16'}
+      top: 0
+.block-17
+  @include pad(2)
+  color: rgb(17, 34, 51)
+  &__item
+    border: 2px solid
+    &:hover
+      opacity: 0.8
+  @if 17 % 2 == 0
+    .even-#{'17'}
+      top: 0
+.block-18
+  @include pad(3)
+  color: rgb(18, 36, 54)
+  &__item
+    border: 0px solid
+    &:hover
+      opacity: 0.0
+  @if 18 % 2 == 0
+    .even-#{'18'}
+      top: 0
+.block-19
+  @include pad(4)
+  color: rgb(19, 38, 57)
+  &__item
+    border: 1px solid
+    &:hover
+      opacity: 0.1
+  @if 19 % 2 == 0
+    .even-#{'19'}
+      top: 0
+.block-20
+  @include pad(0)
+  color: rgb(20, 40, 60)
+  &__item
+    border: 2px solid
+    &:hover
+      opacity: 0.2
+  @if 20 % 2 == 0
+    .even-#{'20'}
+      top: 0
+.block-21
+  @include pad(1)
+  color: rgb(21, 42, 63)
+  &__item
+    border: 0px solid
+    &:hover
+      opacity: 0.3
+  @if 21 % 2 == 0
+    .even-#{'21'}
+      top: 0
+.block-22
+  @include pad(2)
+  color: rgb(22, 44, 66)
+  &__item
+    border: 1px solid
+    &:hover
+      opacity: 0.4
+  @if 22 % 2 == 0
+    .even-#{'22'}
+      top: 0
+.block-23
+  @include pad(3)
+  color: rgb(23, 46, 69)
+  &__item
+    border: 2px solid
+    &:hover
+      opacity: 0.5
+  @if 23 % 2 == 0
+    .even-#{'23'}
+      top: 0
+.block-24
+  @include pad(4)
+  color: rgb(24, 48, 72)
+  &__item
+    border: 0px solid
+    &:hover
+      opacity: 0.6
+  @if 24 % 2 == 0
+    .even-#{'24'}
+      top: 0
+.block-25
+  @include pad(0)
+  color: rgb(25, 50, 75)
+  &__item
+    border: 1px solid
+    &:hover
+      opacity: 0.7
+  @if 25 % 2 == 0
+    .even-#{'25'}
+      top: 0
+.block-26
+  @include pad(1)
+  color: rgb(26, 52, 78)
+  &__item
+    border: 2px solid
+    &:hover
+      opacity: 0.8
+  @if 26 % 2 == 0
+    .even-#{'26'}
+      top: 0
+.block-27
+  @include pad(2)
+  color: rgb(27, 54, 81)
+  &__item
+    border: 0px solid
+    &:hover
+      opacity: 0.0
+  @if 27 % 2 == 0
+    .even-#{'27'}
+      top: 0
+.block-28
+  @include pad(3)
+  color: rgb(28, 56, 84)
+  &__item
+    border: 1px solid
+    &:hover
+      opacity: 0.1
+  @if 28 % 2 == 0
+    .even-#{'28'}
+      top: 0
+.block-29
+  @include pad(4)
+  color: rgb(29, 58, 87)
+  &__item
+    border: 2px solid
+    &:hover
+      opacity: 0.2
+  @if 29 % 2 == 0
+    .even-#{'29'}
+      top: 0
+.block-30
+  @include pad(0)
+  color: rgb(30, 60, 90)
+  &__item
+    border: 0px solid
+    &:hover
+      opacity: 0.3
+  @if 30 % 2 == 0
+    .even-#{'30'}
+      top: 0
+.block-31
+  @include pad(1)
+  color: rgb(31, 62, 93)
+  &__item
+    border: 1px solid
+    &:hover
+      opacity: 0.4
+  @if 31 % 2 == 0
+    .even-#{'31'}
+      top: 0
+.block-32
+  @include pad(2)
+  color: rgb(32, 64, 96)
+  &__item
+    border: 2px solid
+    &:hover
+      opacity: 0.5
+  @if 32 % 2 == 0
+    .even-#{'32'}
+      top: 0
+.block-33
+  @include pad(3)
+  color: rgb(33, 66, 99)
+  &__item
+    border: 0px solid
+    &:hover
+      opacity: 0.6
+  @if 33 % 2 == 0
+    .even-#{'33'}
+      top: 0
+.block-34
+  @include pad(4)
+  color: rgb(34, 68, 102)
+  &__item
+    border: 1px solid
+    &:hover
+      opacity: 0.7
+  @if 34 % 2 == 0
+    .even-#{'34'}
+      top: 0
+.block-35
+  @include pad(0)
+  color: rgb(35, 70, 105)
+  &__item
+    border: 2px solid
+    &:hover
+      opacity: 0.8
+  @if 35 % 2 == 0
+    .even-#{'35'}
+      top: 0
+.block-36
+  @include pad(1)
+  color: rgb(36, 72, 108)
+  &__item
+    border: 0px solid
+    &:hover
+      opacity: 0.0
+  @if 36 % 2 == 0
+    .even-#{'36'}
+      top: 0
+.block-37
+  @include pad(2)
+  color: rgb(37, 74, 111)
+  &__item
+    border: 1px solid
+    &:hover
+      opacity: 0.1
+  @if 37 % 2 == 0
+    .even-#{'37'}
+      top: 0
+.block-38
+  @include pad(3)
+  color: rgb(38, 76, 114)
+  &__item
+    border: 2px solid
+    &:hover
+      opacity: 0.2
+  @if 38 % 2 == 0
+    .even-#{'38'}
+      top: 0
+.block-39
+  @include pad(4)
+  color: rgb(39, 78, 117)
+  &__item
+    border: 0px solid
+    &:hover
+      opacity: 0.3
+  @if 39 % 2 == 0
+    .even-#{'39'}
+      top: 0
+.block-40
+  @include pad(0)
+  color: rgb(40, 80, 120)
+  &__item
+    border: 1px solid
+    &:hover
+      opacity: 0.4
+  @if 40 % 2 == 0
+    .even-#{'40'}
+      top: 0
+.block-41
+  @include pad(1)
+  color: rgb(41, 82, 123)
+  &__item
+    border: 2px solid
+    &:hover
+      opacity: 0.5
+  @if 41 % 2 == 0
+    .even-#{'41'}
+      top: 0
+.block-42
+  @include pad(2)
+  color: rgb(42, 84, 126)
+  &__item
+    border: 0px solid
+    &:hover
+      opacity: 0.6
+  @if 42 % 2 == 0
+    .even-#{'42'}
+      top: 0
+.block-43
+  @include pad(3)
+  color: rgb(43, 86, 129)
+  &__item
+    border: 1px solid
+    &:hover
+      opacity: 0.7
+  @if 43 % 2 == 0
+    .even-#{'43'}
+      top: 0
+.block-44
+  @include pad(4)
+  color: rgb(44, 88, 132)
+  &__item
+    border: 2px solid
+    &:hover
+      opacity: 0.8
+  @if 44 % 2 == 0
+    .even-#{'44'}
+      top: 0
+.block-45
+  @include pad(0)
+  color: rgb(45, 90, 135)
+  &__item
+    border: 0px solid
+    &:hover
+      opacity: 0.0
+  @if 45 % 2 == 0
+    .even-#{'45'}
+      top: 0
+.block-46
+  @include pad(1)
+  color: rgb(46, 92, 138)
+  &__item
+    border: 1px solid
+    &:hover
+      opacity: 0.1
+  @if 46 % 2 == 0
+    .even-#{'46'}
+      top: 0
+.block-47
+  @include pad(2)
+  color: rgb(47, 94, 141)
+  &__item
+    border: 2px solid
+    &:hover
+      opacity: 0.2
+  @if 47 % 2 == 0
+    .even-#{'47'}
+      top: 0
+.block-48
+  @include pad(3)
+  color: rgb(48, 96, 144)
+  &__item
+    border: 0px solid
+    &:hover
+      opacity: 0.3
+  @if 48 % 2 == 0
+    .even-#{'48'}
+      top: 0
+.block-49
+  @include pad(4)
+  color: rgb(49, 98, 147)
+  &__item
+    border: 1px solid
+    &:hover
+      opacity: 0.4
+  @if 49 % 2 == 0
+    .even-#{'49'}
+      top: 0

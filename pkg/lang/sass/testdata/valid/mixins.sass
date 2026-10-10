@@ -1,0 +1,14 @@
+@mixin corner($radius: 4px, $border: 1px)
+  border-radius: $radius
+  border: $border solid #333
+
+@mixin responsive()
+  @media (min-width: 40em)
+    @content
+
+.card
+  @include corner(8px, 2px)
+
+.panel
+  @include responsive
+    padding: 1rem

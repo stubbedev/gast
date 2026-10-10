@@ -1,0 +1,21 @@
+$level: 2
+
+@if $level == 1
+  .depth
+    padding: 1rem
+@else if $level == 2
+  .depth
+    padding: 2rem
+@else
+  .depth
+    padding: 0
+
+@for $i from 1 through 3
+  .col-#{$i}
+    width: $i * 8.333%
+
+$i: 0
+@while $i < 3
+  .row-#{$i}
+    top: $i * 1em
+  $i: $i + 1

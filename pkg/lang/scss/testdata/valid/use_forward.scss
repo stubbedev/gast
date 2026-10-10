@@ -1,0 +1,7 @@
+@use "sass:math" as m;
+@use "helper" with ($radius: 8px);
+@forward "helper" show $radius;
+
+.thing {
+  border-radius: m.max(helper.$radius, 2px);
+}

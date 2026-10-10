@@ -1,0 +1,13 @@
+let a = 1 + 2 * 3 - 4 / 5 % 6;
+let b = 2 ** 3 ** 2;
+let c = (2 ** 3) ** 2;
+let d = -(2 ** 2);
+let e = a < b === c !== d;
+let f = a & b | c ^ d;
+let g = a << 2 >> 1 >>> 3;
+let h = (a && b) || c;
+let h2 = a ?? (b || c);
+let i = ~a, j = !b, k = void 0, l = typeof c, m = delete obj.prop;
+let n = a < b ? b > c ? 1 : 2 : 3;
+let o = (a, b, c);
+let p = a in obj, q = a instanceof Object;

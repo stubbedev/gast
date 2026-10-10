@@ -1,0 +1,13 @@
+@keyframes slide {
+  from {
+    left: 0;
+  }
+
+  50% {
+    left: 50%;
+  }
+
+  to {
+    left: 100%;
+  }
+}

@@ -1,0 +1,13 @@
+$side: left;
+$name: panel;
+
+.#{$name} {
+  margin-#{$side}: 1rem;
+  #{$side}-offset: 2rem;
+  content: "#{$name}: #{$side}";
+  background: url("img/#{$name}.png");
+}
+
+.#{$name}-#{$side} {
+  border-#{$side}-width: thin;
+}

@@ -1,0 +1,8 @@
+@media screen {
+  .scoped {
+    color: red;
+    @at-root .unscoped {
+      color: blue;
+    }
+  }
+}

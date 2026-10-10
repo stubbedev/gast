@@ -1,0 +1,25 @@
+@mixin corner($radius: 4px, $border: 1px) {
+  border-radius: $radius;
+  border: $border solid #333;
+}
+
+@mixin shadow($shadows...) {
+  box-shadow: $shadows;
+}
+
+@mixin responsive() {
+  @media (min-width: 40em) {
+    @content;
+  }
+}
+
+.card {
+  @include corner(8px, 2px);
+  @include shadow(0 0 4px black, 0 0 8px gray);
+}
+
+.panel {
+  @include responsive {
+    padding: 1rem;
+  }
+}
