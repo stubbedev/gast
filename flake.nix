@@ -3,33 +3,23 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
+    flake-parts = {
+      url = "github:hercules-ci/flake-parts";
+      inputs.nixpkgs-lib.follows = "nixpkgs";
+    };
   };
 
-  outputs = {
-    self,
-    nixpkgs,
-    flake-utils,
-  }:
-    flake-utils.lib.eachDefaultSystem (
-      system: let
-        pkgs = nixpkgs.legacyPackages.${system};
-        # Nix has no version to read from the source tree, so builds from a
-        # checkout are stamped with the commit date and hash.
-        rev = self.shortRev or self.dirtyShortRev or "unknown";
-        version = "0-unstable-${self.lastModifiedDate or "0"}";
-      in {
-        packages = rec {
-          gast = pkgs.callPackage ./package.nix {inherit rev version;};
-          default = gast;
-        };
-
-        apps = rec {
-          gast = flake-utils.lib.mkApp {drv = self.packages.${system}.gast;};
-          default = gast;
-        };
-
-        formatter = pkgs.alejandra;
-      }
-    );
+  outputs = inputs @ {flake-parts, ...}:
+    flake-parts.lib.mkFlake {inherit inputs;} {
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
+      imports = [
+        ./nix/package.nix
+        ./nix/shell.nix
+      ];
+    };
 }

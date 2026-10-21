@@ -1,5 +1,4 @@
 /go-template
 /result
 *.test
-.devenv
-.devenv.lock
+/.direnv
