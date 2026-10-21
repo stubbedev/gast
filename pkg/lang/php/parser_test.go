@@ -245,6 +245,8 @@ func TestParseStringLiterals(t *testing.T) {
 		{`'it\'s \\ done'`, "single", `it's \ done`},
 		{`"a\tb\x41A\u{41}"`, "double", "a\tbAAA"},
 		{`"oct\101al"`, "double", "octAal"},
+		{`"\u{110000}"`, "double", "\uFFFD"},
+		{`"\u{10000000000000041}"`, "double", "\uFFFD"},
 	}
 	for _, tc := range tests {
 		lit, ok := exprOf(t, tc.source).(*StringLit)

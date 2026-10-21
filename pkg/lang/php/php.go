@@ -2,7 +2,8 @@ package php
 
 import (
 	"strings"
-	"unicode"
+
+	"github.com/stubbedev/gast/internal/codepoint"
 )
 
 // Parse tokenizes and parses source and returns the file AST. A nil
@@ -95,8 +96,8 @@ func decodeEscapes(body string) string {
 		case 'e':
 			builder.WriteByte(0x1b)
 		case 'x', 'X':
-			if value, width := hexAt(body, index+1, 2); width > 0 {
-				builder.WriteRune(runeOf(value))
+			if value, width, _ := codepoint.Hex(body[index+1:], 2); width > 0 {
+				builder.WriteRune(value)
 				index += width
 			} else {
 				builder.WriteByte('\\')
@@ -107,8 +108,8 @@ func decodeEscapes(body string) string {
 				end := strings.IndexByte(body[index+2:], '}')
 				if end >= 0 {
 					digits := body[index+2 : index+2+end]
-					if value, width := hexAt(digits, 0, len(digits)); width == len(digits) && width > 0 {
-						builder.WriteRune(runeOf(value))
+					if value, width, _ := codepoint.Hex(digits, len(digits)); width == len(digits) && width > 0 {
+						builder.WriteRune(value)
 						index += 2 + end
 						continue
 					}
@@ -118,13 +119,13 @@ func decodeEscapes(body string) string {
 			builder.WriteByte('u')
 		default:
 			if body[index] >= '0' && body[index] <= '7' {
-				value := int(body[index] - '0')
+				value := rune(body[index] - '0')
 				width := 1
 				for width < 3 && index+width < len(body) && body[index+width] >= '0' && body[index+width] <= '7' {
-					value = value*8 + int(body[index+width]-'0')
+					value = value*8 + rune(body[index+width]-'0')
 					width++
 				}
-				builder.WriteRune(runeOf(value & 0xff))
+				builder.WriteRune(value & 0xff)
 				index += width - 1
 				continue
 			}
@@ -133,41 +134,4 @@ func decodeEscapes(body string) string {
 		}
 	}
 	return builder.String()
-}
-
-// runeOf clamps a decoded escape value to the valid rune range;
-// \u{...} admits more hex digits than a rune can hold.
-func runeOf(value int) rune {
-	if value > unicode.MaxRune {
-		return unicode.ReplacementChar
-	}
-	return rune(value) //nolint:gosec // guarded by the MaxRune check above
-}
-
-// hexAt parses up to width hex digits at body[start:], returning the
-// value and how many digits were read.
-func hexAt(body string, start, width int) (int, int) {
-	value := 0
-	count := 0
-	for count < width && start+count < len(body) {
-		digit := hexValue(body[start+count])
-		if digit < 0 {
-			break
-		}
-		value = value*16 + digit
-		count++
-	}
-	return value, count
-}
-
-func hexValue(b byte) int {
-	switch {
-	case '0' <= b && b <= '9':
-		return int(b - '0')
-	case 'a' <= b && b <= 'f':
-		return int(b-'a') + 10
-	case 'A' <= b && b <= 'F':
-		return int(b-'A') + 10
-	}
-	return -1
 }

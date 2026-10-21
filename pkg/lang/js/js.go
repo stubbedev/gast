@@ -1,9 +1,9 @@
 package js
 
 import (
-	"strconv"
 	"strings"
-	"unicode"
+
+	"github.com/stubbedev/gast/internal/codepoint"
 )
 
 // Parse tokenizes and parses source and returns the file AST. A nil
@@ -64,18 +64,18 @@ func decodeString(text string) string {
 			if index+1 < len(body) && body[index+1] >= '0' && body[index+1] <= '9' {
 				// octal escape
 				value, width := octalAt(body, index)
-				builder.WriteRune(runeOf(value))
+				builder.WriteRune(value)
 				index += width - 1
 				continue
 			}
 			builder.WriteByte(0)
 		case '1', '2', '3', '4', '5', '6', '7':
 			value, width := octalAt(body, index)
-			builder.WriteRune(runeOf(value))
+			builder.WriteRune(value)
 			index += width - 1
 		case 'x':
-			if value, width := hexAt(body, index+1, 2); width == 2 {
-				builder.WriteRune(runeOf(value))
+			if value, width, _ := codepoint.Hex(body[index+1:], 2); width == 2 {
+				builder.WriteRune(value)
 				index += width
 			} else {
 				builder.WriteByte('x')
@@ -85,14 +85,14 @@ func decodeString(text string) string {
 				end := strings.IndexByte(body[index+2:], '}')
 				if end >= 0 {
 					digits := body[index+2 : index+2+end]
-					if value, width := hexAt(digits, 0, len(digits)); width == len(digits) && width > 0 && value <= 0x10FFFF {
-						builder.WriteRune(runeOf(value))
+					if value, width, inRange := codepoint.Hex(digits, len(digits)); width == len(digits) && width > 0 && inRange {
+						builder.WriteRune(value)
 						index += 2 + end
 						continue
 					}
 				}
-			} else if value, width := hexAt(body, index+1, 4); width == 4 {
-				builder.WriteRune(runeOf(value))
+			} else if value, width, _ := codepoint.Hex(body[index+1:], 4); width == 4 {
+				builder.WriteRune(value)
 				index += width
 				continue
 			}
@@ -106,36 +106,11 @@ func decodeString(text string) string {
 
 // octalAt parses up to three octal digits at body[start:], returning
 // the value and how many digits were read.
-func octalAt(body string, start int) (int, int) {
-	value := 0
+func octalAt(body string, start int) (rune, int) {
+	var value rune
 	count := 0
 	for count < 3 && start+count < len(body) && body[start+count] >= '0' && body[start+count] <= '7' {
-		value = value*8 + int(body[start+count]-'0')
-		count++
-	}
-	return value, count
-}
-
-// hexAt parses up to width hex digits at body[start:], returning the
-// value and how many digits were read.
-// runeOf clamps a decoded escape value to the valid rune range; hex and
-// \u{...} escapes admit more digits than a rune can hold.
-func runeOf(value int) rune {
-	if value > unicode.MaxRune {
-		return unicode.ReplacementChar
-	}
-	return rune(value) //nolint:gosec // guarded by the MaxRune check above
-}
-
-func hexAt(body string, start, width int) (int, int) {
-	value := 0
-	count := 0
-	for count < width && start+count < len(body) {
-		digit, err := strconv.ParseUint(string(body[start+count]), 16, 32)
-		if err != nil {
-			break
-		}
-		value = value*16 + int(digit)
+		value = value*8 + rune(body[start+count]-'0')
 		count++
 	}
 	return value, count

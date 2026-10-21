@@ -196,7 +196,7 @@ func TestTokenizeStrings(t *testing.T) {
 			t.Errorf("%s: %v", source, err)
 		}
 	}
-	invalid := []string{"'unterminated", "\"multi\nline\"", `"\x4"`, `"\u12"`, `"\u{}"`, `"\u{110000}"`}
+	invalid := []string{"'unterminated", "\"multi\nline\"", `"\x4"`, `"\u12"`, `"\u{}"`, `"\u{110000}"`, `"\u{10000000000000041}"`}
 	for _, source := range invalid {
 		if _, err := kinds(source); err == nil {
 			t.Errorf("%s: expected error", source)

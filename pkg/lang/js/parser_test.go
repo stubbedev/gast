@@ -549,3 +549,17 @@ func TestParseErrorFormatting(t *testing.T) {
 		t.Errorf("got %T, want *gast.LexError", err)
 	}
 }
+
+func TestDecodeStringOutOfRangeCodePoint(t *testing.T) {
+	t.Parallel()
+	tests := map[string]string{
+		`"\u{10FFFF}"`:            "\U0010FFFF",
+		`"\u{110000}"`:            "u{110000}",
+		`"\u{10000000000000041}"`: "u{10000000000000041}",
+	}
+	for source, want := range tests {
+		if got := decodeString(source); got != want {
+			t.Errorf("decodeString(%s) = %q, want %q", source, got, want)
+		}
+	}
+}

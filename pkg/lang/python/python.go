@@ -1,5 +1,11 @@
 package python
 
+import (
+	"unicode/utf8"
+
+	"github.com/stubbedev/gast/internal/codepoint"
+)
+
 // Parse tokenizes and parses source and returns the module AST. A nil
 // error means the source is syntactically valid Python 3.12/3.13;
 // lexical, grammar, and symbol-table violations return *gast.LexError
@@ -115,20 +121,20 @@ func decodeEscape(body string, start int, out *[]byte) int {
 	case '\\', '\'', '"':
 		*out = append(*out, b)
 	case 'x', 'X':
-		if value, width := hexAt(body, start+2, 2); width == 2 {
+		if value, width, _ := codepoint.Hex(body[start+2:], 2); width == 2 {
 			*out = append(*out, byte(value&0xff))
 			return width + 1
 		}
 		*out = append(*out, '\\', b)
 	case 'u':
-		if value, width := hexAt(body, start+2, 4); width == 4 {
-			*out = appendRune(*out, runeOf(value))
+		if value, width, _ := codepoint.Hex(body[start+2:], 4); width == 4 {
+			*out = utf8.AppendRune(*out, value)
 			return width + 1
 		}
 		*out = append(*out, '\\', b)
 	case 'U':
-		if value, width := hexAt(body, start+2, 8); width == 8 {
-			*out = appendRune(*out, runeOf(value))
+		if value, width, _ := codepoint.Hex(body[start+2:], 8); width == 8 {
+			*out = utf8.AppendRune(*out, value)
 			return width + 1
 		}
 		*out = append(*out, '\\', b)
@@ -146,52 +152,4 @@ func decodeEscape(body string, start int, out *[]byte) int {
 		*out = append(*out, '\\', b)
 	}
 	return 1
-}
-
-// appendRune appends a decoded rune, mapping out-of-range values to
-// the replacement character.
-func appendRune(out []byte, r rune) []byte {
-	if r > 0x10FFFF {
-		r = 0xFFFD
-	}
-	return append(out, []byte(string(r))...)
-}
-
-// runeOf clamps a decoded escape value to the valid rune range.
-func runeOf(value int) rune {
-	if value > 0x10FFFF {
-		return 0xFFFD
-	}
-	return rune(value) //nolint:gosec // guarded by the range check above
-}
-
-// hexAt parses up to width hex digits at body[start:], returning the
-// value and how many digits were read.
-func hexAt(body string, start, width int) (int, int) {
-	value := 0
-	count := 0
-	for count < width && start+count < len(body) {
-		digit := hexValue(body[start+count])
-		if digit < 0 {
-			break
-		}
-		value = value*16 + digit
-		count++
-	}
-	if count < width {
-		return 0, 0
-	}
-	return value, count
-}
-
-func hexValue(b byte) int {
-	switch {
-	case '0' <= b && b <= '9':
-		return int(b - '0')
-	case 'a' <= b && b <= 'f':
-		return int(b-'a') + 10
-	case 'A' <= b && b <= 'F':
-		return int(b-'A') + 10
-	}
-	return -1
 }
