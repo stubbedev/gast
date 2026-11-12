@@ -1,12 +1,13 @@
 {self, ...}: {
   perSystem = {
+    inputs',
     lib,
     pkgs,
     self',
     ...
   }: {
     packages = {
-      gast = pkgs.buildGo127Module {
+      gast = (pkgs.buildGoModule.override {go = inputs'.devtools.packages.go;}) {
         pname = "gast";
         # Nix has no version to read from the source tree, so builds from a
         # checkout are stamped with the commit date.
